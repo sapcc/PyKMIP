@@ -133,7 +133,7 @@ class ManagedObjectName(Base):
     __tablename__ = 'managed_object_names'
     id = Column('id', Integer, primary_key=True)
     mo_uid = Column('mo_uid', Integer, ForeignKey('managed_objects.uid'))
-    name = Column('name', String)
+    name = Column('name', String(256))
     index = Column('name_index', Integer)
     name_type = Column('name_type', EnumType(enums.NameType))
 

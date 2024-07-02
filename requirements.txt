@@ -1,5 +1,11 @@
 cryptography>=2.5
 enum-compat
+keystoneauth1
+mysqlclient
+openstacksdk
+python-barbicanclient 
+python-keystoneclient
+python-openstackclient
 requests
 six>=1.11.0
 sqlalchemy>=1.0

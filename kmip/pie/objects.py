@@ -300,7 +300,7 @@ class Key(CryptographicObject):
     )
     _kdw_eki_unique_identifier = Column(
         '_kdw_eki_unique_identifier',
-        String,
+        String(256),
         default=None
     )
     _kdw_eki_cp_block_cipher_mode = Column(
@@ -369,7 +369,7 @@ class Key(CryptographicObject):
     )
     _kdw_mski_unique_identifier = Column(
         '_kdw_mski_unique_identifier',
-        String,
+        String(256),
         default=None
     )
     _kdw_mski_cp_block_cipher_mode = Column(
@@ -1812,11 +1812,11 @@ class ApplicationSpecificInformation(sql.Base):
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
     _application_namespace = sqlalchemy.Column(
         "application_namespace",
-        sqlalchemy.String
+        sqlalchemy.String(256)
     )
     _application_data = sqlalchemy.Column(
         "application_data",
-        sqlalchemy.String
+        sqlalchemy.String(256)
     )
     managed_objects = sqlalchemy.orm.relationship(
         "ManagedObject",
@@ -1911,7 +1911,7 @@ class ObjectGroup(sql.Base):
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True)
     _object_group = sqlalchemy.Column(
         "object_group",
-        sqlalchemy.String,
+        sqlalchemy.String(256),
         nullable=False
     )
     managed_objects = sqlalchemy.orm.relationship(
