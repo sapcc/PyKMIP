@@ -14,15 +14,11 @@ LABEL source_repository=https://github.com/sapcc/PyKMIP
 RUN apk update && \
     apk add --no-cache gcc musl-dev libffi-dev openssl-dev openssh-client git mariadb-dev python3-dev
 
-
-RUN wget -O /usr/local/share/ca-certificates/SAP_Global_Root_CA.crt http://aia.pki.co.sap.com/aia/SAP%20Global%20Root%20CA.crt && \
-        update-ca-certificates
-RUN install -d -m0600 ~/.ssh && ssh-keyscan github.wdf.sap.corp >> ~/.ssh/known_hosts
-
 # Set up directories for certificates and configuration
 RUN mkdir -p /etc/pykmip/certs
 RUN mkdir -p /etc/pykmip/policies
 # Copy your certificates and configuration files into the container
+# Use /bin/create_certificates.py to generate certificas for the build
 COPY certs/server.crt /etc/pykmip/certs/server.crt
 COPY certs/server.key /etc/pykmip/certs/server.key
 COPY certs/ca.crt /etc/pykmip/certs/ca.crt
