@@ -53,6 +53,12 @@ setuptools.setup(
     install_requires=[
         "cryptography",
         "enum-compat",
+        "keystoneauth1",
+        "mysqlclient",
+        "openstacksdk",
+        "python-barbicanclient",
+        "python-keystoneclient",
+        "python-openstackclient",
         "requests",
         "six",
         "sqlalchemy"

@@ -15,6 +15,7 @@
 
 import copy
 import logging
+import os
 import six
 import sqlalchemy
 
@@ -45,6 +46,7 @@ from kmip.pie import sqltypes
 
 from kmip.services.server import policy
 from kmip.services.server.crypto import engine
+from kmip.services.server import barbican
 
 
 class KmipEngine(object):
@@ -88,14 +90,14 @@ class KmipEngine(object):
 
         self._cryptography_engine = engine.CryptographyEngine()
 
-        self.database_path = 'sqlite:///{}'.format(database_path)
+        self.database_path = database_path
         if not database_path:
             self.database_path = 'sqlite:////tmp/pykmip.database'
 
         self._data_store = sqlalchemy.create_engine(
             self.database_path,
             echo=False,
-            connect_args={'check_same_thread': False}
+            connect_args={}
         )
         sqltypes.Base.metadata.create_all(self._data_store)
         self._data_store_session_factory = sqlalchemy.orm.sessionmaker(
@@ -132,6 +134,9 @@ class KmipEngine(object):
         self._attribute_policy = policy.AttributePolicy(self._protocol_version)
         self._operation_policies = policies
         self._client_identity = [None, None]
+        self.os_project_name = os.environ.get("OS_PROJECT_NAME")
+        self.os_project_domain_name = os.environ.get("OS_PROJECT_DOMAIN_NAME")
+        self.barbican = barbican.Barbicanstore(self.os_project_name, self.os_project_domain_name)
 
     def _get_enum_string(self, e):
         return ''.join([x.capitalize() for x in e.name.split('_')])
@@ -1233,9 +1238,16 @@ class KmipEngine(object):
     ):
         object_type = self._get_object_type(uid)
 
-        managed_object = self._data_session.query(object_type).filter(
+        stored_object = self._data_session.query(object_type).filter(
             object_type.unique_identifier == uid
         ).one()
+        if operation == enums.Operation.GET:
+            managed_object = copy.deepcopy(stored_object)
+            if managed_object.object_type == enums.ObjectType.SYMMETRIC_KEY:
+                url = stored_object.value
+                managed_object.value = self.barbican.retrive_secret(url)
+        else:
+            managed_object = stored_object
 
         # TODO (peter-hamilton) Add debug log with policy contents?
 
@@ -1382,11 +1394,18 @@ class KmipEngine(object):
             length
         )
 
+        
+
         managed_object = objects.SymmetricKey(
             algorithm,
             length,
             result.get('value')
         )
+        name = "KMIP"
+        bburl = self.barbican.create_secret(str(name),
+                                            managed_object.value,
+                                            str(algorithm), length)
+        managed_object.value = bburl.encode('utf-8')
         managed_object.names = []
 
         self._set_attributes_on_managed_object(
@@ -1398,6 +1417,7 @@ class KmipEngine(object):
         managed_object._owner = self._client_identity[0]
         managed_object.initial_date = int(time.time())
 
+        
         self._data_session.add(managed_object)
 
         # NOTE (peterhamilton) SQLAlchemy will *not* assign an ID until
@@ -3076,7 +3096,7 @@ class KmipEngine(object):
             )
 
         result = self._cryptography_engine.verify_signature(
-            signing_key=managed_object.value,
+            managed_object.value,
             message=payload.data,
             signature=payload.signature_data,
             padding_method=parameters.padding_method,
