@@ -17,11 +17,6 @@ RUN apk update && \
 # Set up directories for certificates and configuration
 RUN mkdir -p /etc/pykmip/certs
 RUN mkdir -p /etc/pykmip/policies
-# Copy your certificates and configuration files into the container
-# Use /bin/create_certificates.py to generate certificas for the build
-COPY certs/server.crt /etc/pykmip/certs/server.crt
-COPY certs/server.key /etc/pykmip/certs/server.key
-COPY certs/ca.crt /etc/pykmip/certs/ca.crt
 COPY policies/policy.json /etc/pykmip/policies/policy.json
 COPY pykmip.conf /etc/pykmip/server.conf
 
