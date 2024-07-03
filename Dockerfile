@@ -9,6 +9,7 @@ ENV OS_APPLICATION_CREDENTIAL_NAME=kmip
 ENV OS_APPLICATION_CREDENTIAL_SECRET=kmip
 ENV OS_AUTH_TYPE=v3applicationcredential
 ENV OS_AUTH_URL=your_os_auth_url
+LABEL source_repository=https://github.com/sapcc/PyKMIP
 
 # Install necessary packages (including build dependencies)
 RUN apk update && \
