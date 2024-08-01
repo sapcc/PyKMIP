@@ -36,6 +36,7 @@ class Base(object):
         self.tag = tag
         self.type = type
         self.length = None
+        self.logger = logging.getLogger('kmip.core.primitives')
 
     # TODO (peter-hamilton) Convert this into a classmethod, class name can be
     #                       obtained from cls parameter that replaces self
@@ -47,7 +48,11 @@ class Base(object):
     def read_tag(self, istream):
         # Read in the bytes for the tag
         tts = istream.read(self.TAG_SIZE)
-        tag = unpack('!I', b'\x00' + tts[0:self.TAG_SIZE])[0]
+        try:
+            tag = unpack('!I', b'\x00' + tts[0:self.TAG_SIZE])[0]
+        except Exception:
+            self.logger.error("Error reading tag value from buffer")
+            return
 
         enum_tag = enums.Tags(tag)
 
@@ -66,6 +71,7 @@ class Base(object):
         num_bytes = len(tts)
         if num_bytes != self.TYPE_SIZE:
             min_bytes = 'a minimum of {0} bytes'.format(self.TYPE_SIZE)
+            return
             raise exceptions.ReadValueError(
                 Base.__name__,
                 'type',
@@ -90,6 +96,7 @@ class Base(object):
         num_bytes = len(lst)
         if num_bytes != self.LENGTH_SIZE:
             min_bytes = 'a minimum of {0} bytes'.format(self.LENGTH_SIZE)
+            return
             raise exceptions.ReadValueError(
                 Base.__name__,
                 'length',
