@@ -566,6 +566,10 @@ class KmipEngine(object):
 
         for attribute in template_attribute.attributes:
             name = attribute.attribute_name.value
+            if name.startswith('x-NETAPP'):
+                self._logger.info(f"SAPCC: ignored attribute {name}"
+                    f"({attribute.attribute_value})")
+                continue
 
             if not self._attribute_policy.is_attribute_supported(name):
                 raise exceptions.InvalidField(
@@ -926,6 +930,10 @@ class KmipEngine(object):
                 field = 'operation_policy_name'
             elif attribute_name == "Sensitive":
                 field = "sensitive"
+            # elif attribute_name.startswith('x-NETAPP'):
+            #     self._logger.info("SAPCC: Setting single value field to Custom"
+            #                       " Attribute name {0}".format(attribute_name))
+            #     field = attribute_name
 
             if field:
                 existing_value = getattr(managed_object, field)
@@ -1395,7 +1403,6 @@ class KmipEngine(object):
             length
         )
 
-        
 
         managed_object = objects.SymmetricKey(
             algorithm,
@@ -1418,7 +1425,6 @@ class KmipEngine(object):
         managed_object._owner = self._client_identity[0]
         managed_object.initial_date = int(time.time())
 
-        
         self._data_session.add(managed_object)
 
         # NOTE (peterhamilton) SQLAlchemy will *not* assign an ID until
@@ -2007,6 +2013,14 @@ class KmipEngine(object):
         # TODO (peterhamilton) Set additional server-only attributes.
         managed_object._owner = self._client_identity[0]
         managed_object.initial_date = int(time.time())
+
+        name = "KMIP_REGISTERED"
+        algorithm = managed_object.cryptographic_algorithm
+        length = managed_object.cryptographic_length
+        bburl = self.barbican.create_secret(str(name),
+                                            managed_object.value,
+                                            str(algorithm), length)
+        managed_object.value = bburl.encode('utf-8')
 
         self._data_session.add(managed_object)
 
@@ -2704,7 +2718,7 @@ class KmipEngine(object):
     def _process_activate(self, payload):
         self._logger.info("Processing operation: Activate")
 
-        if payload.unique_identifier:
+        if payload.unique_identifier and payload.unique_identifier.value:
             unique_identifier = payload.unique_identifier.value
         else:
             unique_identifier = self._id_placeholder
