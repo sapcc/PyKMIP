@@ -97,6 +97,7 @@ class KmipEngine(object):
         self._data_store = sqlalchemy.create_engine(
             self.database_path,
             echo=False,
+            pool_pre_ping=True,
             connect_args={}
         )
         sqltypes.Base.metadata.create_all(self._data_store)
