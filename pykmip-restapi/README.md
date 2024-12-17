@@ -246,4 +246,11 @@ This document provides details about the APIs for managing and interacting with 
   }
   ```
 
+Example output from a pod in monsoon3 domain :
+
+```
+curl -X POST 'http://kmip-barbican:5005/update_project_id'       -H "Content-Type: application/json"       -d '{"secret_id": "cc2ed8f9-b17b-477c-9845-fd85486a4f28", "project_id": "ccbd3829f5314b9c937a4990c952fe03"}'
+{"message":"Project ID updated successfully"}
+```
+
 ---
