@@ -14,7 +14,7 @@ This document provides details about the APIs for managing and interacting with 
 | `/get_kmip_details`       | `GET`       | Fetch details for a given KMIP ID.                       | `kmip_id` (Query Parameter)             |
 | `/update_policy`          | `POST`      | Update the operation policy for a KMIP object.           | `kmip_id` and `operation_policy_name` (JSON Body) |
 | `/update_owner`           | `POST`      | Update the owner of a KMIP object.                       | `kmip_id` and `owner` (JSON Body)       |
-| `/kmip_register`          | `POST`      | Register a new KMIP object with a URL, owner, and policy.| `url`, `owner`, and `policy` (JSON Body)|
+| `/kmip_register`          | `POST`      | Register a new KMIP object with a URL (barbican href), owner, and policy.| `url`, `owner`, and `policy` (JSON Body)|
 | `/get_barbican_metadata`  | `GET`       | Fetch metadata for a given Barbican UUID.                | `uuid` (Query Parameter)                |
 | `/update_project_id`      | `POST`      | Update the project ID for a Barbican secret.             | `secret_id` and `project_id` (JSON Body)|
 
