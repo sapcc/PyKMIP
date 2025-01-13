@@ -19,6 +19,13 @@ ENV KMIP_MARIADB_SERVICE_HOST=kmip-mariadb.monsoon3.svc.cluster.local \
 # Set the working directory inside the container
 WORKDIR /app
 
+# Install required system packages for PyKMIP and cryptography
+RUN apt-get update && apt-get install -y \
+    libssl-dev \
+    libffi-dev \
+    build-essential \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
 # Copy the project files into the container
 COPY . .
 
@@ -26,7 +33,7 @@ COPY . .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Install Gunicorn WSGI server for production
-RUN pip install gunicorn
+RUN pip install --no-cache-dir gunicorn
 
 # Expose the port the application runs on
 EXPOSE 5005

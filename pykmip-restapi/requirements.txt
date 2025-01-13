@@ -1,5 +1,5 @@
-flask>=2.3
-requests>=2.31
-gunicorn>=20.0
-mysql-connector-python>=8.0
-kmip==0.11.1
+Flask==2.3.2
+PyKMIP==0.10.0
+gunicorn==20.1.0
+cryptography==41.0.3
+pymysql==1.0.3
