@@ -130,25 +130,58 @@ class Barbicanstore:
             attrs['bit_length'] = length
         secret_ref = keymgr.create_secret(**attrs)
         return secret_ref.secret_ref
-    
+
     def retrive_secret(self, url):
-        keymgr = self.api
-        id = str(url, 'utf-8').split('/')[-1]
-        secret = keymgr.get_secret(id)
-
-        payload = secret.payload
-        logging.debug(f"Retrieved payload: {payload}")
-
-        # Ensure the payload is base64 encoded
         try:
-            if len(payload) % 4 != 0:
-                logging.warning("Payload length is not a multiple of 4. Padding will be added.")
-                payload += '=' * (4 - len(payload) % 4)
+            keymgr = self.api
+            id = str(url, 'utf-8').split('/')[-1]
+            secret = keymgr.get_secret(id)
 
-            decoded_payload = base64.b64decode(payload)
-            logging.info("Payload successfully decoded.")
-            return decoded_payload
+            # Check if payload exists and is not empty
+            payload = secret.payload
+            if not payload:
+                logging.error("Payload is empty or missing.")
+                raise ValueError("Retrieved secret has an empty payload.")
+
+            # Check for payload content type
+            content_type = getattr(secret, 'payload_content_type', None)
+            if not content_type:
+                logging.warning("payload_content_type is missing. Defaulting to base64.")
+                content_type = "application/base64"
+
+            logging.debug(f"Retrieved payload: {payload}, Content-Type: {content_type}")
+
+            # Handle different content types
+            if content_type == "application/octet-stream":
+                logging.info("Payload is binary data.")
+                return payload  # Return binary data as is
+            elif content_type == "text/plain":
+                logging.info("Payload is text.")
+                return payload.encode('utf-8')  # Return plain text encoded as bytes
+            elif content_type == "application/base64":
+                logging.info("Payload is base64 encoded. Decoding...")
+                try:
+                    # Ensure the payload is base64 encoded
+                    if len(payload) % 4 != 0:
+                        logging.warning("Payload length is not a multiple of 4. Padding will be added.")
+                        payload += '=' * (4 - len(payload) % 4)
+
+                    decoded_payload = base64.b64decode(payload)
+                    logging.info("Payload successfully decoded.")
+                    return decoded_payload
+
+                except base64.binascii.Error as e:
+                    logging.error(f"Base64 decoding failed: {e}")
+                    raise ValueError("Invalid base64-encoded string.") from e
+
+            else:
+                logging.error(f"Unsupported content type: {content_type}")
+                raise ValueError(f"Unsupported content type: {content_type}")
+
+        except AttributeError as e:
+            logging.error(f"Attribute error: {e}")
+            raise AttributeError("The secret object is missing required attributes.") from e
 
         except Exception as e:
-            logging.error(f"Base64 decoding failed: {e}")
-            raise ValueError("Invalid base64-encoded string.") from e
+            logging.error(f"Unexpected error occurred: {e}")
+            raise RuntimeError("An unexpected error occurred while retrieving the secret.") from e
