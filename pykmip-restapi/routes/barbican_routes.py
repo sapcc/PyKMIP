@@ -1,4 +1,3 @@
-
 from flask import Blueprint, request, jsonify
 
 class BarbicanRoutes:
@@ -15,12 +14,17 @@ class BarbicanRoutes:
         uuid = request.args.get('uuid')
         if not uuid:
             return jsonify({"error": "Missing uuid"}), 400
-        return jsonify(self.barbican_service.get_metadata_from_uuid(uuid))
+
+        result = self.barbican_service.get_metadata_from_uuid(uuid)
+        return jsonify(result)
 
     def update_project_id(self):
         data = request.get_json()
         secret_id = data.get('secret_id')
         project_id = data.get('project_id')
+
         if not secret_id or not project_id:
             return jsonify({"error": "Missing parameters"}), 400
-        return jsonify(self.barbican_service.update_project_id(secret_id, project_id))
+
+        result = self.barbican_service.update_project_id(secret_id, project_id)
+        return jsonify(result)

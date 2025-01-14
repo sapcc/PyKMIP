@@ -1,256 +1,249 @@
-
-# Metadata API for Barbican and KMIP Operations
-
-This document provides details about the APIs for managing and interacting with metadata from both Barbican and KMIP operations.
+Here’s a **comprehensive `README.md` file** with detailed documentation of all available APIs from your **KMIP** and **Barbican** services.
 
 ---
 
-## **API Endpoints**
+# 📘 **Barbican-KMIP REST API Documentation**
 
-| Endpoint                  | HTTP Method | Description                                              | Required Parameters                     |
-|---------------------------|-------------|----------------------------------------------------------|-----------------------------------------|
-| `/get_barbican_id`        | `GET`       | Fetch the Barbican ID for a given KMIP ID.               | `kmip_id` (Query Parameter)             |
-| `/get_kmip_id`            | `GET`       | Fetch the KMIP ID for a given Barbican ID.               | `barbican_id` (Query Parameter)         |
-| `/get_kmip_details`       | `GET`       | Fetch details for a given KMIP ID.                       | `kmip_id` (Query Parameter)             |
-| `/update_policy`          | `POST`      | Update the operation policy for a KMIP object.           | `kmip_id` and `operation_policy_name` (JSON Body) |
-| `/update_owner`           | `POST`      | Update the owner of a KMIP object.                       | `kmip_id` and `owner` (JSON Body)       |
-| `/kmip_register`          | `POST`      | Register a new KMIP object with a URL (barbican href), owner, and policy.| `url`, `owner`, and `policy` (JSON Body)|
-| `/get_barbican_metadata`  | `GET`       | Fetch metadata for a given Barbican UUID.                | `uuid` (Query Parameter)                |
-| `/update_project_id`      | `POST`      | Update the project ID for a Barbican secret.             | `secret_id` and `project_id` (JSON Body)|
+This repository provides a RESTful API for interacting with the **Barbican** and **KMIP** services. Below is a detailed list of available endpoints, their descriptions, expected request parameters, and example requests.
 
 ---
 
-## **API Details**
+## 🚀 **Available APIs**
 
-### **1. `/get_barbican_id`**
-**Description**: Fetch the Barbican ID for a given KMIP ID.
+### 🔐 **Barbican APIs**
 
-- **Request**:
-  ```bash
-  curl 'http://localhost:5005/get_barbican_id?kmip_id=12345'
-  ```
-
-- **Response (Success)**:
-  ```json
-  {
-      "barbican_id": "b95940ee-6320-4e47-ae86-3139a7d8ec73"
-  }
-  ```
-
-- **Response (Error)**:
-  ```json
-  {
-      "error": "No data found for the given KMIP ID"
-  }
-  ```
+| **HTTP Method** | **Endpoint**                          | **Description**                                               |
+|-----------------|---------------------------------------|---------------------------------------------------------------|
+| `GET`           | `/barbican/get_barbican_metadata`      | Retrieves metadata from the `secrets` table using a UUID.     |
+| `POST`          | `/barbican/update_project_id`          | Updates the `project_id` in the `secrets` table using `secret_id` and `external_id`. |
 
 ---
 
-### **2. `/get_kmip_id`**
-**Description**: Fetch the KMIP ID for a given Barbican ID.
+### 🔑 **KMIP APIs**
 
-- **Request**:
-  ```bash
-  curl 'http://localhost:5005/get_kmip_id?barbican_id=b95940ee-6320-4e47-ae86-3139a7d8ec73'
-  ```
-
-- **Response (Success)**:
-  ```json
-  {
-      "kmip_id": "12345"
-  }
-  ```
-
-- **Response (Error)**:
-  ```json
-  {
-      "error": "No KMIP ID found for the given Barbican ID"
-  }
-  ```
+| **HTTP Method** | **Endpoint**                           | **Description**                                                |
+|-----------------|----------------------------------------|----------------------------------------------------------------|
+| `GET`           | `/kmip/get_barbican_id`                | Retrieves Barbican metadata based on the provided KMIP ID.     |
+| `POST`          | `/kmip/kmip_register`                  | Registers a new KMIP object in the `managed_objects` table.    |
+| `GET`           | `/kmip/get_kmip_id_from_barbican`       | Retrieves the KMIP ID based on the provided Barbican ID.       |
+| `POST`          | `/kmip/update_policy`                  | Updates the policy for a given KMIP object.                    |
 
 ---
 
-### **3. `/get_kmip_details`**
-**Description**: Fetch detailed metadata for a given KMIP ID.
+## 📖 **Barbican API Documentation**
 
-- **Request**:
-  ```bash
-  curl 'http://localhost:5005/get_kmip_details?kmip_id=12345'
-  ```
+### 🔎 **1. GET /barbican/get_barbican_metadata**
 
-- **Response (Success)**:
-  ```json
-  {
-      "barbican_id": "b95940ee-6320-4e47-ae86-3139a7d8ec73",
-      "kmip_details": {
-          "uid": "12345",
-          "class_type": "SymmetricKey",
-          "value": "https://example.com/kmip/12345",
-          "owner": "owner@example.com",
-          "operation_policy_name": "default-policy"
-      }
-  }
-  ```
+**Description:**
+Retrieves metadata from the `secrets` table using a UUID.
 
-- **Response (Error)**:
-  ```json
-  {
-      "error": "No KMIP details found for the given KMIP ID"
-  }
-  ```
+**Endpoint:**
+`GET /barbican/get_barbican_metadata`
 
----
+**Query Parameter:**
 
-### **4. `/update_policy`**
-**Description**: Update the operation policy for a KMIP object.
+| **Parameter** | **Type** | **Required** | **Description**            |
+|---------------|----------|--------------|----------------------------|
+| `uuid`        | String   | Yes          | The unique UUID of the secret. |
 
-- **Request**:
-  ```bash
-  curl -X POST 'http://localhost:5005/update_policy' \
-  -H "Content-Type: application/json" \
-  -d '{
-      "kmip_id": "12345",
-      "operation_policy_name": "new-policy"
-  }'
-  ```
+**Example Request:**
 
-- **Response (Success)**:
-  ```json
-  {
-      "message": "Operation policy updated successfully"
-  }
-  ```
-
-- **Response (Error)**:
-  ```json
-  {
-      "error": "No KMIP object found with the given ID"
-  }
-  ```
-
----
-
-### **5. `/update_owner`**
-**Description**: Update the owner of a KMIP object.
-
-- **Request**:
-  ```bash
-  curl -X POST 'http://localhost:5005/update_owner' \
-  -H "Content-Type: application/json" \
-  -d '{
-      "kmip_id": "12345",
-      "owner": "new-owner@example.com"
-  }'
-  ```
-
-- **Response (Success)**:
-  ```json
-  {
-      "message": "Owner updated successfully"
-  }
-  ```
-
-- **Response (Error)**:
-  ```json
-  {
-      "error": "No KMIP object found with the given ID"
-  }
-  ```
-
----
-
-### **6. `/kmip_register`**
-**Description**: Register a new KMIP object.
-
-- **Request**:
-  ```bash
-  curl -X POST 'http://localhost:5005/kmip_register' \
-  -H "Content-Type: application/json" \
-  -d '{
-      "url": "https://example.com/kmip/12345",
-      "owner": "owner@example.com",
-      "policy": "default-policy"
-  }'
-  ```
-
-- **Response (Success)**:
-  ```json
-  {
-      "message": "KMIP object registered successfully",
-      "uid": "12345"
-  }
-  ```
-
-- **Response (Error)**:
-  ```json
-  {
-      "error": "KMIP registration failed"
-  }
-  ```
-
----
-
-### **7. `/get_barbican_metadata`**
-**Description**: Fetch metadata for a given Barbican UUID.
-
-- **Request**:
-  ```bash
-  curl 'http://localhost:5005/get_barbican_metadata?uuid=b95940ee-6320-4e47-ae86-3139a7d8ec73'
-  ```
-
-- **Response (Success)**:
-  ```json
-  {
-      "metadata": {
-          "id": "b95940ee-6320-4e47-ae86-3139a7d8ec73",
-          "name": "Test Secret",
-          "type": "symmetric-key",
-          "metadata": "{\"purpose\": \"encryption\", \"size\": 256}"
-      }
-  }
-  ```
-
-- **Response (Error)**:
-  ```json
-  {
-      "error": "No metadata found for the given UUID"
-  }
-  ```
-
----
-
-### **8. `/update_project_id`**
-**Description**: Update the project ID for a Barbican secret.
-
-- **Request**:
-  ```bash
-  curl -X POST 'http://localhost:5005/update_project_id' \
-  -H "Content-Type: application/json" \
-  -d '{
-      "secret_id": "b95940ee-6320-4e47-ae86-3139a7d8ec73",
-      "project_id": "new-project-id"
-  }'
-  ```
-
-- **Response (Success)**:
-  ```json
-  {
-      "message": "Project ID updated successfully"
-  }
-  ```
-
-- **Response (Error)**:
-  ```json
-  {
-      "error": "No secret found with the given ID"
-  }
-  ```
-
-Example output from a pod in monsoon3 domain :
-
+```bash
+curl -X GET 'http://<host>:5006/barbican/get_barbican_metadata?uuid=cc2ed8f9-b17b-477c-9845-fd85486a4f28'
 ```
-curl -X POST 'http://kmip-barbican:5005/update_project_id'       -H "Content-Type: application/json"       -d '{"secret_id": "cc2ed8f9-b17b-477c-9845-fd85486a4f28", "project_id": "ccbd3829f5314b9c937a4990c952fe03"}'
-{"message":"Project ID updated successfully"}
+
+**Example Response:**
+
+```json
+{
+    "data": [
+        {
+            "id": "cc2ed8f9-b17b-477c-9845-fd85486a4f28",
+            "name": "Test Secret",
+            "project_id": "e9141fb24eee4b3e9f25ae69cda31132"
+        }
+    ]
+}
 ```
+
+---
+
+### 🔧 **2. POST /barbican/update_project_id**
+
+**Description:**
+Updates the `project_id` in the `secrets` table for a given `secret_id` and `external_id`.
+
+**Endpoint:**
+`POST /barbican/update_project_id`
+
+**Request Body:**
+
+| **Field**      | **Type** | **Required** | **Description**                 |
+|----------------|----------|--------------|---------------------------------|
+| `secret_id`    | String   | Yes          | The unique ID of the secret.    |
+| `external_id`  | String   | Yes          | The external ID of the project. |
+
+**Example Request:**
+
+```bash
+curl -X POST 'http://<host>:5006/barbican/update_project_id' \
+     -H "Content-Type: application/json" \
+     -d '{"secret_id": "cc2ed8f9-b17b-477c-9845-fd85486a4f28", "external_id": "e9141fb24eee4b3e9f25ae69cda31132"}'
+```
+
+**Example Response:**
+
+```json
+{
+    "message": "Project ID updated successfully"
+}
+```
+
+---
+
+## 📖 **KMIP API Documentation**
+
+### 🔎 **3. GET /kmip/get_barbican_id**
+
+**Description:**
+Retrieves Barbican metadata based on the provided KMIP ID.
+
+**Endpoint:**
+`GET /kmip/get_barbican_id`
+
+**Query Parameter:**
+
+| **Parameter** | **Type** | **Required** | **Description**         |
+|---------------|----------|--------------|-------------------------|
+| `kmip_id`     | String   | Yes          | The unique KMIP ID.     |
+
+**Example Request:**
+
+```bash
+curl -X GET 'http://<host>:5006/kmip/get_barbican_id?kmip_id=1234'
+```
+
+**Example Response:**
+
+```json
+{
+    "data": [
+        {
+            "uid": "1234",
+            "url": "https://example.com/object/1234",
+            "owner": "user1",
+            "policy": "default"
+        }
+    ]
+}
+```
+
+---
+
+### 🔧 **4. POST /kmip/kmip_register**
+
+**Description:**
+Registers a new KMIP object in the `managed_objects` table.
+
+**Endpoint:**
+`POST /kmip/kmip_register`
+
+**Request Body:**
+
+| **Field**   | **Type** | **Required** | **Description**          |
+|-------------|----------|--------------|--------------------------|
+| `url`       | String   | Yes          | The object's URL.        |
+| `owner`     | String   | Yes          | The owner of the object. |
+| `policy`    | String   | Yes          | The policy to apply.     |
+
+**Example Request:**
+
+```bash
+curl -X POST 'http://<host>:5006/kmip/kmip_register' \
+     -H "Content-Type: application/json" \
+     -d '{
+           "url": "https://example.com/object/1234",
+           "owner": "user1",
+           "policy": "default_policy"
+         }'
+```
+
+**Example Response:**
+
+```json
+{
+    "message": "KMIP object registered successfully",
+    "uid": 1235
+}
+```
+
+---
+
+### 🔎 **5. GET /kmip/get_kmip_id_from_barbican**
+
+**Description:**
+Retrieves the KMIP ID based on the provided Barbican ID.
+
+**Endpoint:**
+`GET /kmip/get_kmip_id_from_barbican`
+
+**Query Parameter:**
+
+| **Parameter**    | **Type** | **Required** | **Description**            |
+|------------------|----------|--------------|----------------------------|
+| `barbican_id`    | String   | Yes          | The unique Barbican ID.    |
+
+**Example Request:**
+
+```bash
+curl -X GET 'http://<host>:5006/kmip/get_kmip_id_from_barbican?barbican_id=299'
+```
+
+**Example Response:**
+
+```json
+{
+    "kmip_id": "1234"
+}
+```
+
+---
+
+### 🔧 **6. POST /kmip/update_policy**
+
+**Description:**
+Updates the policy for a given KMIP object.
+
+**Endpoint:**
+`POST /kmip/update_policy`
+
+**Request Body:**
+
+| **Field**              | **Type** | **Required** | **Description**            |
+|------------------------|----------|--------------|----------------------------|
+| `kmip_id`              | String   | Yes          | The unique KMIP ID.        |
+| `operation_policy_name` | String   | Yes          | The policy to be updated.  |
+
+**Example Request:**
+
+```bash
+curl -X POST 'http://<host>:5006/kmip/update_policy' \
+     -H "Content-Type: application/json" \
+     -d '{"kmip_id": "298", "operation_policy_name": "default"}'
+```
+
+**Example Response:**
+
+```json
+{
+    "message": "Operation policy updated successfully"
+}
+```
+
+---
+
+## 🧪 **Testing the APIs**
+
+You can use tools like **Postman** or **cURL** to test the APIs. Ensure your database is correctly configured and the server is running.
 
 ---
