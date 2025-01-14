@@ -17,6 +17,7 @@ import os
 import urllib3
 import sys
 import base64
+import logging
 from keystoneauth1 import loading
 from keystoneauth1 import session
 from keystoneclient import client
@@ -134,4 +135,20 @@ class Barbicanstore:
         keymgr = self.api
         id = str(url, 'utf-8').split('/')[-1]
         secret = keymgr.get_secret(id)
-        return base64.b64decode(secret.payload)
+
+        payload = secret.payload
+        logging.debug(f"Retrieved payload: {payload}")
+
+        # Ensure the payload is base64 encoded
+        try:
+            if len(payload) % 4 != 0:
+                logging.warning("Payload length is not a multiple of 4. Padding will be added.")
+                payload += '=' * (4 - len(payload) % 4)
+
+            decoded_payload = base64.b64decode(payload)
+            logging.info("Payload successfully decoded.")
+            return decoded_payload
+
+        except Exception as e:
+            logging.error(f"Base64 decoding failed: {e}")
+            raise ValueError("Invalid base64-encoded string.") from e

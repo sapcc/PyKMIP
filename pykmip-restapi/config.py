@@ -27,6 +27,6 @@ class AppConfig:
                 "database": os.getenv('BARBICAN_MARIADB_NAME', 'barbican'),
             },
             host=os.getenv('APP_HOST', '0.0.0.0'),
-            port=int(os.getenv('APP_PORT', 5005)),
+            port=int(os.getenv('APP_PORT', 5006)),
             debug=bool(os.getenv('APP_DEBUG', False))
         )
