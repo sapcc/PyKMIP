@@ -144,7 +144,7 @@ class Barbicanstore:
                 raise ValueError("Retrieved secret has an empty payload.")
 
             # Check for payload content type
-            if type(secret.payload) == "bytes":
+            if type(secret.payload) == bytes:
                 logging.info("Payload is binary data.")
                 return payload  # Return binary data as is
 
