@@ -144,7 +144,11 @@ class Barbicanstore:
                 raise ValueError("Retrieved secret has an empty payload.")
 
             # Check for payload content type
-            content_type = getattr(secret, 'payload_content_type', None)
+            if type(secret.payload) == "bytes":
+                logging.info("Payload is binary data.")
+                return payload  # Return binary data as is
+
+            content_type = list(secret.content_types.values())[0]
             if not content_type:
                 logging.warning("payload_content_type is missing. Defaulting to base64.")
                 content_type = "application/base64"
@@ -152,31 +156,20 @@ class Barbicanstore:
             logging.debug(f"Retrieved payload: {payload}, Content-Type: {content_type}")
 
             # Handle different content types
-            if content_type == "application/octet-stream":
-                logging.info("Payload is binary data.")
-                return payload  # Return binary data as is
-            elif content_type == "text/plain":
-                logging.info("Payload is text.")
-                return payload.encode('utf-8')  # Return plain text encoded as bytes
-            elif content_type == "application/base64":
-                logging.info("Payload is base64 encoded. Decoding...")
-                try:
-                    # Ensure the payload is base64 encoded
-                    if len(payload) % 4 != 0:
-                        logging.warning("Payload length is not a multiple of 4. Padding will be added.")
-                        payload += '=' * (4 - len(payload) % 4)
+            logging.info("Payload is base64 encoded. Decoding...")
+            try:
+                # Ensure the payload is base64 encoded
+                if len(payload) % 4 != 0:
+                    logging.warning("Payload length is not a multiple of 4. Padding will be added.")
+                    payload += '=' * (4 - len(payload) % 4)
 
-                    decoded_payload = base64.b64decode(payload)
-                    logging.info("Payload successfully decoded.")
-                    return decoded_payload
+                decoded_payload = base64.b64decode(payload)
+                logging.info("Payload successfully decoded.")
+                return decoded_payload
 
-                except base64.binascii.Error as e:
-                    logging.error(f"Base64 decoding failed: {e}")
-                    raise ValueError("Invalid base64-encoded string.") from e
-
-            else:
-                logging.error(f"Unsupported content type: {content_type}")
-                raise ValueError(f"Unsupported content type: {content_type}")
+            except base64.binascii.Error as e:
+                logging.error(f"Base64 decoding failed: {e}")
+                raise ValueError("Invalid base64-encoded string.") from e
 
         except AttributeError as e:
             logging.error(f"Attribute error: {e}")
