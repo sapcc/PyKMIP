@@ -39,6 +39,21 @@ class KMIPService:
                 raise e
         return self.cursor
 
+    @staticmethod
+    def decode_result(result):
+        """
+        Decodes bytes in a result dictionary into strings.
+
+        Args:
+            result (dict): The result dictionary from the database query.
+
+        Returns:
+            dict: The decoded dictionary.
+        """
+        if result:
+            return {k: (v.decode('utf-8') if isinstance(v, (bytes, bytearray)) else v) for k, v in result.items()}
+        return result
+
     def execute_mysql_queries(self, kmip_id, operation_policy_name=None, owner=None):
         """
         Executes SQL queries on the KMIP database to retrieve and update KMIP objects.
@@ -63,8 +78,8 @@ class KMIPService:
             if not result:
                 return {"error": "No data found for the given uid"}
 
-            # Convert bytearray fields to strings
-            result = {key: value.decode('utf-8') if isinstance(value, bytearray) else value for key, value in result.items()}
+            # Decode the result
+            result = self.decode_result(result)
 
             # Extract Barbican ID from the URL
             barbican_url = result.get("value", "")
@@ -173,3 +188,30 @@ class KMIPService:
         except Error as e:
             logger.error(f"Error during KMIP registration: {e}")
             return {"error": f"KMIP registration failed: {str(e)}"}
+
+    def get_kmip_id_from_barbican(self, barbican_id):
+        """
+        Retrieves the KMIP ID based on the provided Barbican ID.
+
+        Args:
+            barbican_id (str): The unique Barbican ID to search for.
+
+        Returns:
+            dict: A dictionary with the KMIP ID or an error message.
+        """
+        try:
+            query = "SELECT uid FROM managed_objects WHERE value LIKE %s"
+            cursor = self.connect()
+            cursor.execute(query, (f"%{barbican_id}%",))
+            result = cursor.fetchone()
+
+            if not result:
+                return {"error": f"No KMIP ID found for Barbican ID: {barbican_id}"}
+
+            # Decode the result and return
+            result = self.decode_result(result)
+            return {"kmip_id": result.get("uid")}
+
+        except Error as e:
+            logger.error(f"Database error while fetching KMIP ID for Barbican ID {barbican_id}: {e}")
+            return {"error": f"Database operation failed: {str(e)}"}
