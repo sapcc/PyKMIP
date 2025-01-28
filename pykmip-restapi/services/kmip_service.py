@@ -188,3 +188,30 @@ class KMIPService:
         except Error as e:
             logger.error(f"Error during KMIP registration: {e}")
             return {"error": f"KMIP registration failed: {str(e)}"}
+
+    def get_kmip_id_from_barbican(self, barbican_id):
+        """
+        Retrieves the KMIP ID based on the provided Barbican ID.
+
+        Args:
+            barbican_id (str): The unique Barbican ID to search for.
+
+        Returns:
+            dict: A dictionary with the KMIP ID or an error message.
+        """
+        try:
+            query = "SELECT uid FROM managed_objects WHERE value LIKE %s"
+            cursor = self.connect()
+            cursor.execute(query, (f"%{barbican_id}%",))
+            result = cursor.fetchone()
+
+            if not result:
+                return {"error": f"No KMIP ID found for Barbican ID: {barbican_id}"}
+
+            # Decode the result and return
+            result = self.decode_result(result)
+            return {"kmip_id": result.get("uid")}
+
+        except Error as e:
+            logger.error(f"Database error while fetching KMIP ID for Barbican ID {barbican_id}: {e}")
+            return {"error": f"Database operation failed: {str(e)}"}
