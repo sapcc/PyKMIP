@@ -14,6 +14,12 @@ class KMIPRoutes:
         self.bp.route('/get_kmip_id_from_barbican', methods=['GET'])(self.get_kmip_id_from_barbican)
 
     def get_barbican_id(self):
+        """
+        Retrieves Barbican ID for a given KMIP ID.
+
+        Returns:
+            JSON response with Barbican ID or error message.
+        """
         kmip_id = request.args.get('kmip_id')
         if not kmip_id:
             return jsonify({"error": "Missing kmip_id"}), 400
@@ -21,10 +27,46 @@ class KMIPRoutes:
         return jsonify(result)
 
     def update_policy(self):
+        """
+        Updates the operation policy name for a KMIP object.
+
+        Returns:
+            JSON response indicating success or failure of the update.
+        """
         data = request.get_json()
-        return jsonify({"message": "Update policy logic goes here"})
+
+        # Validate input data
+        kmip_id = data.get('kmip_id')
+        operation_policy_name = data.get('operation_policy_name')
+
+        if not kmip_id or not operation_policy_name:
+            return jsonify({"error": "Missing required parameters: 'kmip_id' and 'operation_policy_name'"}), 400
+
+        # Call the KMIPService to execute the update
+        try:
+            result = self.kmip_service.execute_mysql_queries(kmip_id, operation_policy_name=operation_policy_name)
+
+            # Check for errors in the result
+            if "error" in result:
+                return jsonify({"error": result["error"]}), 500
+
+            return jsonify({
+                "message": "Operation policy updated successfully",
+                "kmip_id": kmip_id,
+                "updated_policy": operation_policy_name,
+                "details": result
+            }), 200
+
+        except Exception as e:
+            return jsonify({"error": f"An unexpected error occurred: {str(e)}"}), 500
 
     def register_kmip(self):
+        """
+        Registers a new KMIP object with the provided URL, owner, and policy.
+
+        Returns:
+            JSON response indicating success or failure of the registration.
+        """
         data = request.get_json()
         url = data.get('url')
         owner = data.get('owner')
@@ -35,6 +77,15 @@ class KMIPRoutes:
         return jsonify(result)
 
     def get_kmip_id_from_barbican(self):
+        """
+        Retrieves the KMIP ID based on the provided Barbican ID.
+
+        Args:
+            barbican_id (str): The unique identifier of the Barbican object.
+
+        Returns:
+            JSON response with the KMIP ID or an error message if not found.
+        """
         barbican_id = request.args.get('barbican_id')
         if not barbican_id:
             return jsonify({"error": "Missing barbican_id"}), 400
