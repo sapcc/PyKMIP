@@ -76,7 +76,7 @@ class KMIPService:
                 cursor.fetchall()
 
                 if not result:
-                    return {"error": "No data found for the given uid"}
+                    return {"error": "No data found for the given uid: {kmip_id}"}
 
                 # Decode the result
                 result = self.decode_result(result)
