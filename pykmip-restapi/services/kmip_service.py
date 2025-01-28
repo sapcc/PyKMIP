@@ -39,8 +39,7 @@ class KMIPService:
                 raise e
         return self.cursor
 
-    @staticmethod
-    def decode_result(result):
+    def decode_result(self, result):
         """
         Decodes bytes in a result dictionary into strings.
 
@@ -77,6 +76,9 @@ class KMIPService:
 
             if not result:
                 return {"error": "No data found for the given uid"}
+
+            # Ensure no unread results remain
+            cursor.fetchall()
 
             # Decode the result
             result = self.decode_result(result)
