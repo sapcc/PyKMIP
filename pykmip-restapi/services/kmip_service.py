@@ -72,6 +72,9 @@ class KMIPService:
                 cursor.execute(select_query, (kmip_id,))
                 result = cursor.fetchone()
 
+                # Consume all remaining results to prevent unread results
+                cursor.fetchall()
+
                 if not result:
                     return {"error": "No data found for the given uid"}
 
@@ -126,6 +129,10 @@ class KMIPService:
                 # Generate new UID
                 cursor.execute("SELECT MAX(uid) AS uid FROM managed_objects")
                 max_uid_row = cursor.fetchone()
+
+                # Consume all remaining results to prevent unread results
+                cursor.fetchall()
+
                 new_uuid = (max_uid_row['uid'] or 0) + 1
 
                 # Insert into managed_objects
@@ -166,6 +173,9 @@ class KMIPService:
                 logger.debug(f"Executing query: {query} with barbican_id={barbican_id}")
                 cursor.execute(query, (f"%{barbican_id}%",))
                 result = cursor.fetchone()
+
+                # Consume all remaining results to prevent unread results
+                cursor.fetchall()
 
                 if not result:
                     return {"error": f"No KMIP ID found for Barbican ID: {barbican_id}"}
