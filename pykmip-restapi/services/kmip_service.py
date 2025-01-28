@@ -65,54 +65,69 @@ class KMIPService:
         Returns:
             dict: A dictionary containing the KMIP object details or an error message.
         """
-        try:
-            cursor = self.connect()
+        retry_count = 3  # Number of retries
+        for attempt in range(retry_count):
+            try:
+                cursor = self.connect()
 
-            # SELECT Query
-            select_query = "SELECT * FROM managed_objects WHERE uid=%s"
-            logger.debug(f"Executing SELECT query: {select_query} with values ({kmip_id},)")
-            cursor.execute(select_query, (kmip_id,))
-            result = cursor.fetchone()
+                # SELECT Query
+                select_query = "SELECT * FROM managed_objects WHERE uid=%s"
+                logger.debug(f"Executing SELECT query: {select_query} with values ({kmip_id},)")
+                cursor.execute(select_query, (kmip_id,))
+                result = cursor.fetchone()
 
-            if not result:
-                return {"error": "No data found for the given uid"}
+                if not result:
+                    return {"error": "No data found for the given uid"}
 
-            # Ensure no unread results remain
-            cursor.fetchall()
+                # Consume all remaining results if any
+                cursor.fetchall()
 
-            # Decode the result
-            result = self.decode_result(result)
+                # Decode the result
+                result = self.decode_result(result)
 
-            # Extract Barbican ID from the URL
-            barbican_url = result.get("value", "")
-            barbican_id = barbican_url.split('/')[-1] if barbican_url else None
+                # Extract Barbican ID from the URL
+                barbican_url = result.get("value", "")
+                barbican_id = barbican_url.split('/')[-1] if barbican_url else None
 
-            # Prepare and execute the UPDATE query if needed
-            update_query = None
-            update_values = None
-            if operation_policy_name:
-                update_query = "UPDATE managed_objects SET operation_policy_name=%s WHERE uid=%s"
-                update_values = (operation_policy_name, kmip_id)
-            elif owner:
-                update_query = "UPDATE managed_objects SET owner=%s WHERE uid=%s"
-                update_values = (owner, kmip_id)
+                # Prepare and execute the UPDATE query if needed
+                update_query = None
+                update_values = None
+                if operation_policy_name:
+                    update_query = "UPDATE managed_objects SET operation_policy_name=%s WHERE uid=%s"
+                    update_values = (operation_policy_name, kmip_id)
+                elif owner:
+                    update_query = "UPDATE managed_objects SET owner=%s WHERE uid=%s"
+                    update_values = (owner, kmip_id)
 
-            if update_query:
-                logger.debug(f"Executing UPDATE query: {update_query} with values {update_values}")
-                cursor.execute(update_query, update_values)
-                self.connection.commit()
-                logger.debug("Update operation committed successfully.")
+                if update_query:
+                    logger.debug(f"Executing UPDATE query: {update_query} with values {update_values}")
+                    cursor.execute(update_query, update_values)
+                    self.connection.commit()
+                    logger.debug("Update operation committed successfully.")
 
-            return {
-                "barbican_id": barbican_id,
-                "kmip_details": result,
-                "query_executed": update_query,
-                "query_values": update_values
-            }
+                # Close the cursor
+                cursor.close()
 
-        except Error as e:
-            logger.error(f"Database error: {e}")
-            return {"error": f"Database operation failed: {str(e)}"}
+                return {
+                    "barbican_id": barbican_id,
+                    "kmip_details": result,
+                    "query_executed": update_query,
+                    "query_values": update_values,
+                }
+
+            except Error as e:
+                logger.error(f"Database error: {e}")
+                if attempt < retry_count - 1:
+                    logger.info(f"Retrying query execution... Attempt {attempt + 1}/{retry_count}")
+                    # Close cursor and reconnect before retrying
+                    if self.cursor:
+                        self.cursor.close()
+                    self.connection = None
+                    time.sleep(1)  # Optional: Add delay between retries
+                else:
+                    return {"error": f"Database operation failed after retries: {str(e)}"}
+
+        return {"error": "Unknown error occurred during retries"}
 
     def register_kmip_object(self, url, owner, policy):
         """
