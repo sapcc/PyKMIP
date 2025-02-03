@@ -111,6 +111,7 @@ class KMIPService:
             logger.error(f"Database error: {e}")
             return {"error": f"Database operation failed: {str(e)}"}
 
+
     def register_kmip_object(self, url, owner, policy):
         """
         Registers a new KMIP object in the managed_objects table.
@@ -144,8 +145,36 @@ class KMIPService:
                 cursor.execute(insert_managed_objects, (new_uuid, 2, 'SymmetricKey', url, 1, policy, 0, int(time.time()), owner))
 
                 # Insert into crypto_objects
-                insert_crypto_objects = "INSERT INTO crypto_objects (uid, cryptographic_usage_mask, state) VALUES (%s, %s, %s)"
+                insert_crypto_objects = """
+                INSERT INTO crypto_objects (uid, cryptographic_usage_mask, state)
+                VALUES (%s, %s, %s)
+                """
                 cursor.execute(insert_crypto_objects, (new_uuid, 12, 2))
+
+                # Insert into keys table
+                insert_keys = """
+                INSERT INTO `keys` (
+                    uid, cryptographic_algorithm, cryptographic_length, key_format_type,
+                    _kdw_wrapping_method, _kdw_eki_cp_block_cipher_mode, _kdw_eki_cp_padding_method,
+                    _kdw_eki_cp_hashing_algorithm, _kdw_eki_cp_key_role_type,
+                    _kdw_eki_cp_digital_signature_algorithm, _kdw_eki_cp_cryptographic_algorithm,
+                    _kdw_mski_cp_block_cipher_mode, _kdw_mski_cp_padding_method,
+                    _kdw_mski_cp_hashing_algorithm, _kdw_mski_cp_key_role_type,
+                    _kdw_mski_cp_digital_signature_algorithm, _kdw_mski_cp_cryptographic_algorithm,
+                    _kdw_encoding_option
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """
+                keys_values = (
+                    new_uuid, 3, 256, 1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1
+                )
+                cursor.execute(insert_keys, keys_values)
+
+                # Insert into symmetric_keys table
+                insert_symmetric_keys = """
+                INSERT INTO symmetric_keys (uid)
+                VALUES (%s)
+                """
+                cursor.execute(insert_symmetric_keys, (new_uuid,))
 
                 # Commit transaction
                 conn.commit()
