@@ -12,6 +12,7 @@ class KMIPRoutes:
         self.bp.route('/update_policy', methods=['POST'])(self.update_policy)
         self.bp.route('/kmip_register', methods=['POST'])(self.register_kmip)
         self.bp.route('/get_kmip_id_from_barbican', methods=['GET'])(self.get_kmip_id_from_barbican)
+        self.bp.route('/update_owner', methods=['POST'])(self.update_owner)
 
     def get_barbican_id(self):
         """
@@ -91,3 +92,32 @@ class KMIPRoutes:
             return jsonify({"error": "Missing barbican_id"}), 400
         result = self.kmip_service.get_kmip_id_from_barbican(barbican_id)
         return jsonify(result)
+
+    def update_owner(self):
+        """
+        Updates the owner of a KMIP object.
+
+        Returns:
+            JSON response indicating success or failure of the update.
+        """
+        data = request.get_json()
+        kmip_id = data.get('kmip_id')
+        new_owner = data.get('new_owner')
+
+        if not kmip_id or not new_owner:
+            return jsonify({"error": "Missing required parameters: 'kmip_id' and 'new_owner'"}), 400
+
+        try:
+            result = self.kmip_service.execute_mysql_queries(kmip_id, owner=new_owner)
+
+            if "error" in result:
+                return jsonify({"error": result["error"]}), 500
+
+            return jsonify({
+                "message": "Owner updated successfully",
+                "kmip_id": kmip_id,
+                "new_owner": new_owner
+            }), 200
+
+        except Exception as e:
+            return jsonify({"error": f"An unexpected error occurred: {str(e)}"}), 500

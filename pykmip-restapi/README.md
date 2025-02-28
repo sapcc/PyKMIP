@@ -27,6 +27,7 @@ This repository provides a RESTful API for interacting with the **Barbican** and
 | `POST`          | `/kmip/kmip_register`                  | Registers a new KMIP object in the `managed_objects` table.    |
 | `GET`           | `/kmip/get_kmip_id_from_barbican`       | Retrieves the KMIP ID based on the provided Barbican ID.       |
 | `POST`          | `/kmip/update_policy`                  | Updates the policy for a given KMIP object.                    |
+| `POST`          | `/kmip/update_owner`                  | Updates the Owner for a given KMIP object.                    |
 
 ---
 
