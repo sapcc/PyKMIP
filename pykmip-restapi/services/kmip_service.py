@@ -111,7 +111,6 @@ class KMIPService:
             logger.error(f"Database error: {e}")
             return {"error": f"Database operation failed: {str(e)}"}
 
-
     def register_kmip_object(self, url, owner, policy):
         """
         Registers a new KMIP object in the managed_objects table.
@@ -127,31 +126,27 @@ class KMIPService:
         try:
             conn = self.connect()
             with conn.cursor(dictionary=True) as cursor:
-                # Generate new UID
-                cursor.execute("SELECT MAX(uid) AS uid FROM managed_objects")
-                max_uid_row = cursor.fetchone()
 
-                # Consume all remaining results to prevent unread results
-                cursor.fetchall()
+                cursor.execute("INSERT INTO managed_objects (object_type) VALUES (2)")
+                conn.commit()
 
-                new_uuid = (max_uid_row['uid'] or 0) + 1
+                cursor.execute("SELECT LAST_INSERT_ID() as uid")
+                new_uuid = cursor.fetchone()["uid"]
 
-                # Insert into managed_objects
-                insert_managed_objects = """
-                INSERT INTO managed_objects (uid, object_type, class_type, value, name_index,
-                                             operation_policy_name, `sensitive`, initial_date, owner)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                update_query = """
+                UPDATE managed_objects
+                SET class_type=%s, value=%s, name_index=%s, operation_policy_name=%s,
+                    `sensitive`=%s, initial_date=%s, owner=%s
+                WHERE uid=%s
                 """
-                cursor.execute(insert_managed_objects, (new_uuid, 2, 'SymmetricKey', url, 1, policy, 0, int(time.time()), owner))
+                cursor.execute(update_query, ('SymmetricKey', url, 1, policy, 0, int(time.time()), owner, new_uuid))
 
-                # Insert into crypto_objects
                 insert_crypto_objects = """
                 INSERT INTO crypto_objects (uid, cryptographic_usage_mask, state)
                 VALUES (%s, %s, %s)
                 """
                 cursor.execute(insert_crypto_objects, (new_uuid, 12, 2))
 
-                # Insert into keys table
                 insert_keys = """
                 INSERT INTO `keys` (
                     uid, cryptographic_algorithm, cryptographic_length, key_format_type,
@@ -169,14 +164,12 @@ class KMIPService:
                 )
                 cursor.execute(insert_keys, keys_values)
 
-                # Insert into symmetric_keys table
                 insert_symmetric_keys = """
                 INSERT INTO symmetric_keys (uid)
                 VALUES (%s)
                 """
                 cursor.execute(insert_symmetric_keys, (new_uuid,))
 
-                # Commit transaction
                 conn.commit()
 
                 return {"message": "KMIP object registered successfully", "uid": new_uuid}
@@ -184,6 +177,7 @@ class KMIPService:
         except Error as e:
             logger.error(f"Error during KMIP registration: {e}")
             return {"error": f"KMIP registration failed: {str(e)}"}
+
 
     def get_kmip_id_from_barbican(self, barbican_id):
         """
