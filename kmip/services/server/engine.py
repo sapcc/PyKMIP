@@ -29,6 +29,7 @@ import kmip
 from kmip.core import attributes
 from kmip.core import enums
 from kmip.core import exceptions
+from kmip.core import utils
 
 from kmip.core.objects import MACData, KeyWrappingData
 
@@ -1166,7 +1167,7 @@ class KmipEngine(object):
         if operation_object_policy == enums.Policy.ALLOW_ALL:
             return True
         elif operation_object_policy == enums.Policy.ALLOW_OWNER:
-            if session_user == object_owner:
+            if utils.match_owner(session_user, object_owner):
                 return True
             else:
                 return False

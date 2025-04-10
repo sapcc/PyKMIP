@@ -15,6 +15,7 @@
 
 from binascii import hexlify
 import io
+import re
 
 from kmip.core import exceptions
 
@@ -60,6 +61,25 @@ def build_er_error(class_object, descriptor, expected, received,
         class_string = '{0}.{1}'.format(class_object.__name__, attribute)
 
     return msg.format(class_string, descriptor, expected, received)
+
+
+def match_owner(session_user, object_owner):
+    """
+    Allows all shards of an AZ to access an object, by matching
+    the vCenter hostname AZ and region.
+    """
+    def extract_vcenter_az(hostname):
+        if hostname:
+            match = re.search(
+                r'^vc-([a-z])-\d+\.cc\.(.+)\.cloud\.sap$',
+                hostname)
+            if match:
+                return match.group(1, 2)
+        return hostname
+
+    user_az = extract_vcenter_az(session_user)
+    owner_az = extract_vcenter_az(object_owner)
+    return user_az == owner_az
 
 
 class BytearrayStream(io.RawIOBase):

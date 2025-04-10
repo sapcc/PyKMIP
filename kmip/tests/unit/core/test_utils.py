@@ -54,6 +54,32 @@ class TestUtils(TestCase):
                          'received {2} byte(s)'.format(num, bytes_exp,
                                                        bytes_obs))
 
+    def test_match_owner(self):
+        # Correctly matches vCenter owners
+        self.assertTrue(
+            utils.match_owner('vc-a-0.cc.qa-de-1.cloud.sap',
+                              'vc-a-1.cc.qa-de-1.cloud.sap')
+        )
+        self.assertFalse(
+            utils.match_owner('vc-a-0.cc.qa-de-1.cloud.sap',
+                              'vc-b-0.cc.qa-de-1.cloud.sap')
+        )
+        self.assertFalse(
+            utils.match_owner('vc-a-0.cc.qa-de-1.cloud.sap',
+                              'vc-a-0.cc.eu-de-1.cloud.sap')
+        )
+
+        # Usual owners
+        self.assertTrue(
+            utils.match_owner('owner1', 'owner1')
+        )
+        self.assertTrue(
+            utils.match_owner(None, None)
+        )
+        self.assertFalse(
+            utils.match_owner('owner2', 'owner1')
+        )
+
 
 class TestBytearrayStream(TestCase):
 
