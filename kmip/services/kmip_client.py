@@ -286,6 +286,7 @@ class KMIPProxy(object):
 
     def _create_socket(self, sock):
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        context.minimum_version = ssl.TLSVersion.TLSv1_2
         context.check_hostname = False
         context.set_ciphers('ECDHE-ECDSA-AES256-SHA384,AES256-SHA256')
         context.verify_mode = ssl.CERT_NONE
