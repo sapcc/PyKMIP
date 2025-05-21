@@ -93,7 +93,7 @@ class BarbicanService:
 
             # Find the project_id using the external_id
             find_project_query = "SELECT id FROM projects WHERE external_id=%s"
-            logger.debug(f"Executing query: {find_project_query} with external_id={external_id}")
+            logger.debug("Executing find query for projects table with placeholders for sensitive data.")
             cursor.execute(find_project_query, (external_id,))
             project = cursor.fetchone()
 
@@ -106,7 +106,7 @@ class BarbicanService:
 
             # Update the project_id in the secrets table
             update_query = "UPDATE secrets SET project_id=%s WHERE id=%s"
-            logger.debug(f"Executing query: {update_query} with project_id={project_id}, secret_id={secret_id}")
+            logger.debug("Executing update query for secrets table with placeholders for sensitive data.")
             cursor.execute(update_query, (project_id, secret_id))
 
             if cursor.rowcount == 0:
