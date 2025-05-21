@@ -66,7 +66,7 @@ if __name__ == '__main__':
                 cryptographic_algorithm=enums.CryptographicAlgorithm.AES
             )
             logger.info("Successfully derived a new secret via PBKDF2.")
-            logger.info("Secret ID: {0}".format(secret_id))
+            logger.info("A new secret has been derived successfully.")
         except Exception as e:
             logger.error(e)
 
@@ -96,7 +96,7 @@ if __name__ == '__main__':
                 cryptographic_length=256
             )
             logger.info("Successfully derived a new secret via encryption.")
-            logger.info("Secret ID: {0}".format(secret_id))
+            logger.info("A new secret has been derived successfully.")
         except Exception as e:
             logger.error(e)
 
