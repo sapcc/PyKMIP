@@ -729,7 +729,7 @@ def log_secret(logger, secret_type, secret_value):
     elif secret_type is ObjectType.SPLIT_KEY:
         log_split_key(logger, secret_value)
     else:
-        logger.info('generic secret: {0}'.format(secret_value))
+        logger.info('generic secret: [REDACTED]')
 
 
 def log_certificate(logger, certificate):
