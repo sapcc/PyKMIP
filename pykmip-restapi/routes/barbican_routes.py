@@ -2,7 +2,12 @@ from flask import Blueprint, request, jsonify
 import requests
 import os
 
+
 def is_authorized(request):
+    """
+    Validates the token from the Authorization header against Keystone and
+    ensures the user has the 'keymanager_admin' role.
+    """
     keystone_url = os.environ.get("keystone_url")
     if not keystone_url:
         return False
@@ -18,9 +23,17 @@ def is_authorized(request):
     }
 
     try:
-        resp = requests.get(f"{keystone_url}/auth/tokens", headers=headers)
-        return resp.status_code == 200
-    except requests.RequestException:
+        response = requests.get(f"{keystone_url}/auth/tokens", headers=headers)
+        if response.status_code != 200:
+            return False
+
+        token_data = response.json().get("token", {})
+        roles = token_data.get("roles", [])
+        has_admin_role = any(role.get("name") == "keymanager_admin" for role in roles)
+
+        return has_admin_role
+
+    except (requests.RequestException, ValueError, KeyError):
         return False
 
 
@@ -35,6 +48,12 @@ class BarbicanRoutes:
         self.bp.route('/update_project_id', methods=['POST'])(self.update_project_id)
 
     def get_metadata(self):
+        """
+        Retrieves Barbican metadata for a given UUID.
+
+        Returns:
+            JSON response with metadata or error message.
+        """
         if not is_authorized(request):
             return jsonify({"error": "Unauthorized"}), 401
 
@@ -46,6 +65,12 @@ class BarbicanRoutes:
         return jsonify(result)
 
     def update_project_id(self):
+        """
+        Updates the project ID for a Barbican secret.
+
+        Returns:
+            JSON response indicating success or failure of the update.
+        """
         if not is_authorized(request):
             return jsonify({"error": "Unauthorized"}), 401
 
