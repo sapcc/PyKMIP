@@ -1,4 +1,28 @@
 from flask import Blueprint, request, jsonify
+import requests
+import os
+
+def is_authorized(request):
+    keystone_url = os.environ.get("keystone_url")
+    if not keystone_url:
+        return False
+
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return False
+
+    token = auth_header.split("Bearer ")[1].strip()
+    headers = {
+        "X-Subject-Token": token,
+        "Content-Type": "application/json"
+    }
+
+    try:
+        resp = requests.get(f"{keystone_url}/auth/tokens", headers=headers)
+        return resp.status_code == 200
+    except requests.RequestException:
+        return False
+
 
 class BarbicanRoutes:
     def __init__(self, barbican_service):
@@ -11,6 +35,9 @@ class BarbicanRoutes:
         self.bp.route('/update_project_id', methods=['POST'])(self.update_project_id)
 
     def get_metadata(self):
+        if not is_authorized(request):
+            return jsonify({"error": "Unauthorized"}), 401
+
         uuid = request.args.get('uuid')
         if not uuid:
             return jsonify({"error": "Missing uuid"}), 400
@@ -19,6 +46,9 @@ class BarbicanRoutes:
         return jsonify(result)
 
     def update_project_id(self):
+        if not is_authorized(request):
+            return jsonify({"error": "Unauthorized"}), 401
+
         data = request.get_json()
         secret_id = data.get('secret_id')
         project_id = data.get('project_id')
