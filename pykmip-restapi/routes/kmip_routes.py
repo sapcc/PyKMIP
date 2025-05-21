@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify
 from services.kmip_service import KMIPService
+import logging
 
 class KMIPRoutes:
     def __init__(self, kmip_service):
@@ -59,7 +60,6 @@ class KMIPRoutes:
             }), 200
 
         except Exception as e:
-            import logging
             logging.error("An unexpected error occurred", exc_info=True)
             return jsonify({"error": "An internal error has occurred. Please contact support."}), 500
 
@@ -122,6 +122,5 @@ class KMIPRoutes:
             }), 200
 
         except Exception as e:
-            import logging
             logging.error("An unexpected error occurred", exc_info=True)
             return jsonify({"error": "An internal error has occurred. Please contact support."}), 500
