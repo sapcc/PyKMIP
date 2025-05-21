@@ -123,7 +123,7 @@ if __name__ == '__main__':
                 cryptographic_algorithm=enums.CryptographicAlgorithm.RC4
             )
             logger.info("Successfully derived a new secret via HMAC.")
-            logger.info("Secret ID: {0}".format(secret_id))
+            logger.info("A new secret has been derived successfully, but its ID will not be logged for security reasons.")
         except Exception as e:
             logger.error(e)
 
