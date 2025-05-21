@@ -114,7 +114,7 @@ class BarbicanService:
 
             # Commit the transaction
             self.connection.commit()
-            logger.info(f"Project ID updated successfully for secret_id={secret_id}")
+            logger.info("Project ID updated successfully for a secret.")
 
             return {"message": "Project ID updated successfully"}
         except Error as e:
