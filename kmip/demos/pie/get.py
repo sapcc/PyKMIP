@@ -45,6 +45,6 @@ if __name__ == '__main__':
             secret = client.get(uid)
             logger.info("Successfully retrieved secret with ID: {0}".format(
                 uid))
-            logger.info("Secret data: {0}".format(secret))
+            logger.info("Secret retrieved successfully but its contents are not logged for security reasons.")
         except Exception as e:
             logger.error(e)
