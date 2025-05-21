@@ -123,7 +123,7 @@ if __name__ == '__main__':
                 cryptographic_algorithm=enums.CryptographicAlgorithm.RC4
             )
             logger.info("Successfully derived a new secret via HMAC.")
-            logger.info("Secret ID: {0}".format(secret_id))
+            logger.debug("Derived secret ID (truncated): {0}".format(secret_id[:8] + "..." if secret_id else "N/A"))
         except Exception as e:
             logger.error(e)
 
@@ -141,7 +141,7 @@ if __name__ == '__main__':
                 cryptographic_length=128
             )
             logger.info("Successfully derived a new secret via hashing.")
-            logger.info("Secret ID: {0}".format(secret_id))
+            logger.debug("Derived secret ID (truncated): {0}".format(secret_id[:8] + "..." if secret_id else "N/A"))
         except Exception as e:
             logger.error(e)
 
@@ -172,6 +172,6 @@ if __name__ == '__main__':
             logger.info(
                 "Successfully derived a new secret via NIST 800 108-C."
             )
-            logger.info("Secret ID: {0}".format(secret_id))
+            logger.debug("Derived secret ID (truncated): {0}".format(secret_id[:8] + "..." if secret_id else "N/A"))
         except Exception as e:
             logger.error(e)
