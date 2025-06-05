@@ -12,32 +12,44 @@ def is_authorized(request):
     """
     keystone_url = os.environ.get("keystone_url")
     if not keystone_url:
+        print("[Authorization Error] Keystone URL not set")
         return False
 
     auth_header = request.headers.get("Authorization")
     if not auth_header or not auth_header.startswith("Bearer "):
+        print("[Authorization Error] Missing or invalid Authorization header")
         return False
 
     token = auth_header.split("Bearer ")[1].strip()
     headers = {
-        "X-Subject-Token": token,
+        "X-Auth-Token": token,
         "Content-Type": "application/json"
     }
 
     try:
         response = requests.get(f"{keystone_url}/auth/tokens", headers=headers)
-        if response.status_code != 200:
-            return False
+        response.raise_for_status()  # Raises for HTTP 4xx/5xx
 
         token_data = response.json().get("token", {})
         roles = token_data.get("roles", [])
-        has_admin_role = any(role.get("name") == "keymanager_admin" for role in roles)
 
+        has_admin_role = any(role.get("name") == "keymanager_admin" for role in roles)
+        if not has_admin_role:
+            print("[Authorization Error] User lacks 'keymanager_admin' role")
         return has_admin_role
 
-    except (requests.RequestException, ValueError, KeyError):
-        return False
+    except requests.exceptions.HTTPError as e:
+        print(f"[Authorization Error] Keystone responded with HTTP error: {e.response.status_code}")
+    except requests.exceptions.RequestException as e:
+        print(f"[Authorization Error] Network error while contacting Keystone: {e}")
+    except ValueError as e:
+        print(f"[Authorization Error] Failed to parse JSON: {e}")
+    except KeyError as e:
+        print(f"[Authorization Error] Expected key missing in token data: {e}")
+    except Exception as e:
+        print(f"[Authorization Error] Unexpected error: {e}")
 
+    return False
 
 class KMIPRoutes:
     def __init__(self, kmip_service):
