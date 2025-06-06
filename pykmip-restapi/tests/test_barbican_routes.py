@@ -1,6 +1,5 @@
-
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 from flask import Flask
 from routes.barbican_routes import BarbicanRoutes
 from services.barbican_service import BarbicanService
@@ -13,23 +12,27 @@ class TestBarbicanRoutes(unittest.TestCase):
         self.app.register_blueprint(self.barbican_routes.bp, url_prefix='/barbican')
         self.client = self.app.test_client()
 
-    def test_get_metadata_success(self):
+    @patch('routes.barbican_routes.is_authorized', return_value=True)
+    def test_get_metadata_success(self, mock_auth):
         self.barbican_service.get_metadata_from_uuid.return_value = {"metadata": {"key": "value"}}
         response = self.client.get('/barbican/get_barbican_metadata?uuid=test-uuid')
         self.assertEqual(response.status_code, 200)
         self.assertIn("metadata", response.json)
 
-    def test_get_metadata_missing_uuid(self):
+    @patch('routes.barbican_routes.is_authorized', return_value=True)
+    def test_get_metadata_missing_uuid(self, mock_auth):
         response = self.client.get('/barbican/get_barbican_metadata')
         self.assertEqual(response.status_code, 400)
         self.assertIn("error", response.json)
 
-    def test_update_project_id_missing_parameters(self):
+    @patch('routes.barbican_routes.is_authorized', return_value=True)
+    def test_update_project_id_missing_parameters(self, mock_auth):
         response = self.client.post('/barbican/update_project_id', json={})
         self.assertEqual(response.status_code, 400)
         self.assertIn("error", response.json)
 
-    def test_update_project_id_success(self):
+    @patch('routes.barbican_routes.is_authorized', return_value=True)
+    def test_update_project_id_success(self, mock_auth):
         self.barbican_service.update_project_id.return_value = {"message": "Project ID updated successfully"}
         response = self.client.post('/barbican/update_project_id', json={
             "secret_id": "test-secret-id",
@@ -37,3 +40,9 @@ class TestBarbicanRoutes(unittest.TestCase):
         })
         self.assertEqual(response.status_code, 200)
         self.assertIn("message", response.json)
+
+    @patch('routes.barbican_routes.is_authorized', return_value=False)
+    def test_unauthorized_access(self, mock_auth):
+        response = self.client.get('/barbican/get_barbican_metadata?uuid=test-uuid')
+        self.assertEqual(response.status_code, 401)
+        self.assertIn("error", response.json)

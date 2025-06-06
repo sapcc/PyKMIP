@@ -1,6 +1,55 @@
 from flask import Blueprint, request, jsonify
 from services.kmip_service import KMIPService
 import logging
+import requests
+import os
+
+
+def is_authorized(request):
+    """
+    Validates the token from the Authorization header against Keystone and
+    ensures the user has the 'keymanager_admin' role.
+    """
+    keystone_url = os.environ.get("keystone_url")
+    if not keystone_url:
+        print("[Authorization Error] Keystone URL not set")
+        return False
+
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        print("[Authorization Error] Missing or invalid Authorization header")
+        return False
+
+    token = auth_header.split("Bearer ")[1].strip()
+    headers = {
+        "X-Auth-Token": token,
+        "Content-Type": "application/json"
+    }
+
+    try:
+        response = requests.get(f"{keystone_url}/auth/tokens", headers=headers)
+        response.raise_for_status()  # Raises for HTTP 4xx/5xx
+
+        token_data = response.json().get("token", {})
+        roles = token_data.get("roles", [])
+
+        has_admin_role = any(role.get("name") == "keymanager_admin" for role in roles)
+        if not has_admin_role:
+            print("[Authorization Error] User lacks 'keymanager_admin' role")
+        return has_admin_role
+
+    except requests.exceptions.HTTPError as e:
+        print(f"[Authorization Error] Keystone responded with HTTP error: {e.response.status_code}")
+    except requests.exceptions.RequestException as e:
+        print(f"[Authorization Error] Network error while contacting Keystone: {e}")
+    except ValueError as e:
+        print(f"[Authorization Error] Failed to parse JSON: {e}")
+    except KeyError as e:
+        print(f"[Authorization Error] Expected key missing in token data: {e}")
+    except Exception as e:
+        print(f"[Authorization Error] Unexpected error: {e}")
+
+    return False
 
 class KMIPRoutes:
     def __init__(self, kmip_service):
@@ -22,6 +71,9 @@ class KMIPRoutes:
         Returns:
             JSON response with Barbican ID or error message.
         """
+        if not is_authorized(request):
+            return jsonify({"error": "Unauthorized"}), 401
+
         kmip_id = request.args.get('kmip_id')
         if not kmip_id:
             return jsonify({"error": "Missing kmip_id"}), 400
@@ -35,6 +87,9 @@ class KMIPRoutes:
         Returns:
             JSON response indicating success or failure of the update.
         """
+        if not is_authorized(request):
+            return jsonify({"error": "Unauthorized"}), 401
+
         data = request.get_json()
 
         # Validate input data
@@ -70,6 +125,9 @@ class KMIPRoutes:
         Returns:
             JSON response indicating success or failure of the registration.
         """
+        if not is_authorized(request):
+            return jsonify({"error": "Unauthorized"}), 401
+
         data = request.get_json()
         url = data.get('url')
         owner = data.get('owner')
@@ -89,6 +147,9 @@ class KMIPRoutes:
         Returns:
             JSON response with the KMIP ID or an error message if not found.
         """
+        if not is_authorized(request):
+            return jsonify({"error": "Unauthorized"}), 401
+
         barbican_id = request.args.get('barbican_id')
         if not barbican_id:
             return jsonify({"error": "Missing barbican_id"}), 400
@@ -102,6 +163,9 @@ class KMIPRoutes:
         Returns:
             JSON response indicating success or failure of the update.
         """
+        if not is_authorized(request):
+            return jsonify({"error": "Unauthorized"}), 401
+
         data = request.get_json()
         kmip_id = data.get('kmip_id')
         new_owner = data.get('new_owner')
