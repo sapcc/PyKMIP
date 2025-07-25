@@ -1,3 +1,12 @@
+.. warning::
+
+   🚧 This repository is a **customized internal fork** of the original `PyKMIP`_ project,
+   maintained for internal usage at **SAP SE**. The information in this README may be outdated or
+   reflect the upstream project, not SAP-specific modifications.
+
+   This fork is not intended for public distribution or general-purpose use.  
+   For the original project, visit: https://github.com/OpenKMIP/PyKMIP
+
 ------
 PyKMIP
 ------
