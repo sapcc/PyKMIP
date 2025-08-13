@@ -40,4 +40,4 @@ RUN pip install --no-cache-dir gunicorn
 EXPOSE 5005
 
 # Default command to run the Flask app using Gunicorn
-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5005", "app:create_app()"]
+CMD ["gunicorn", "-w", "1", "-b", "0.0.0.0:5005", "app:create_app()"]

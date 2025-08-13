@@ -54,7 +54,26 @@ class BarbicanService:
         """
         try:
             cursor = self.connect()
-            query = "SELECT * FROM secrets WHERE id = %s"
+            query = """
+                SELECT
+                    s.id,
+                    s.name,
+                    s.algorithm,
+                    s.bit_length,
+                    s.mode,
+                    s.secret_type,
+                    s.status,
+                    s.created_at,
+                    s.updated_at,
+                    s.deleted,
+                    s.deleted_at,
+                    s.expiration,
+                    s.creator_id,
+                    COALESCE(p.external_id, s.project_id) AS project_id
+                FROM secrets s
+                LEFT JOIN projects p ON s.project_id = p.id
+                WHERE s.id = %s
+            """
             logger.debug(f"Executing query: {query} with uuid={uuid}")
             cursor.execute(query, (uuid,))
             result = cursor.fetchall()
