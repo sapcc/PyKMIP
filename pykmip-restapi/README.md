@@ -1,10 +1,48 @@
-Here’s a **comprehensive `README.md` file** with detailed documentation of all available APIs from your **KMIP** and **Barbican** services.
-
----
-
 # 📘 **Barbican-KMIP REST API Documentation**
 
 This repository provides a RESTful API for interacting with the **Barbican** and **KMIP** services. Below is a detailed list of available endpoints, their descriptions, expected request parameters, and example requests.
+
+---
+
+## 🔐 Authentication (Read Me First)
+
+All endpoints require a valid **OpenStack Keystone v3** token via the HTTP header:
+
+```
+Authorization: Bearer <USER_TOKEN>
+```
+
+Internally, the service validates this token against Keystone using:
+
+- `X-Auth-Token`: the token used to **authenticate the request to Keystone** (often a service/admin token; falls back to the user token if not provided)
+- `X-Subject-Token`: the **user token being validated**
+
+### Recommended environment setup for testing
+```bash
+export USER_TOKEN="<paste a user token>"
+export SERVICE_TOKEN="<paste a service/admin token>"   # optional
+export KEYSTONE="https://<keystone-host>:5000/v3"
+```
+
+### 🔎 Keystone validation (optional but handy for troubleshooting)
+
+**A) Self-validation (no service token):**
+```bash
+curl -i -s \
+  -H "X-Auth-Token: $USER_TOKEN" \
+  -H "X-Subject-Token: $USER_TOKEN" \
+  "$KEYSTONE/auth/tokens"
+```
+
+**B) Service-to-service validation (privileged):**
+```bash
+curl -i -s \
+  -H "X-Auth-Token: $SERVICE_TOKEN" \
+  -H "X-Subject-Token: $USER_TOKEN" \
+  "$KEYSTONE/auth/tokens"
+```
+
+If successful, Keystone returns `200` with JSON containing `token.roles`. Your API checks these roles against `ALLOWED_ADMIN_ROLES` (default: `keymanager_admin`).
 
 ---
 
@@ -25,9 +63,9 @@ This repository provides a RESTful API for interacting with the **Barbican** and
 |-----------------|----------------------------------------|----------------------------------------------------------------|
 | `GET`           | `/kmip/get_barbican_id`                | Retrieves Barbican metadata based on the provided KMIP ID.     |
 | `POST`          | `/kmip/kmip_register`                  | Registers a new KMIP object in the `managed_objects` table.    |
-| `GET`           | `/kmip/get_kmip_id_from_barbican`       | Retrieves the KMIP ID based on the provided Barbican ID.       |
+| `GET`           | `/kmip/get_kmip_id_from_barbican`      | Retrieves the KMIP ID based on the provided Barbican ID.       |
 | `POST`          | `/kmip/update_policy`                  | Updates the policy for a given KMIP object.                    |
-| `POST`          | `/kmip/update_owner`                  | Updates the Owner for a given KMIP object.                    |
+| `POST`          | `/kmip/update_owner`                   | Updates the Owner for a given KMIP object.                     |
 
 ---
 
@@ -48,23 +86,9 @@ Retrieves metadata from the `secrets` table using a UUID.
 | `uuid`        | String   | Yes          | The unique UUID of the secret. |
 
 **Example Request:**
-
 ```bash
-curl -X GET 'http://<host>:5006/barbican/get_barbican_metadata?uuid=cc2ed8f9-b17b-477c-9845-fd85486a4f28'
-```
-
-**Example Response:**
-
-```json
-{
-    "data": [
-        {
-            "id": "cc2ed8f9-b17b-477c-9845-fd85486a4f28",
-            "name": "Test Secret",
-            "project_id": "e9141fb24eee4b3e9f25ae69cda31132"
-        }
-    ]
-}
+curl -s -X GET "http://<host>:5006/barbican/get_barbican_metadata?uuid=cc2ed8f9-b17b-477c-9845-fd85486a4f28" \
+  -H "Authorization: Bearer $USER_TOKEN" | jq .
 ```
 
 ---
@@ -85,19 +109,11 @@ Updates the `project_id` in the `secrets` table for a given `secret_id` and `ext
 | `external_id`  | String   | Yes          | The external ID of the project. |
 
 **Example Request:**
-
 ```bash
-curl -X POST 'http://<host>:5006/barbican/update_project_id' \
-     -H "Content-Type: application/json" \
-     -d '{"secret_id": "cc2ed8f9-b17b-477c-9845-fd85486a4f28", "external_id": "e9141fb24eee4b3e9f25ae69cda31132"}'
-```
-
-**Example Response:**
-
-```json
-{
-    "message": "Project ID updated successfully"
-}
+curl -s -X POST "http://<host>:5006/barbican/update_project_id" \
+  -H "Authorization: Bearer $USER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"secret_id":"cc2ed8f9-b17b-477c-9845-fd85486a4f28","external_id":"e9141fb24eee4b3e9f25ae69cda31132"}' | jq .
 ```
 
 ---
@@ -119,24 +135,9 @@ Retrieves Barbican metadata based on the provided KMIP ID.
 | `kmip_id`     | String   | Yes          | The unique KMIP ID.     |
 
 **Example Request:**
-
 ```bash
-curl -X GET 'http://<host>:5006/kmip/get_barbican_id?kmip_id=1234'
-```
-
-**Example Response:**
-
-```json
-{
-    "data": [
-        {
-            "uid": "1234",
-            "url": "https://example.com/object/1234",
-            "owner": "user1",
-            "policy": "default"
-        }
-    ]
-}
+curl -s -X GET "http://<host>:5006/kmip/get_barbican_id?kmip_id=1234" \
+  -H "Authorization: Bearer $USER_TOKEN" | jq .
 ```
 
 ---
@@ -158,24 +159,11 @@ Registers a new KMIP object in the `managed_objects` table.
 | `policy`    | String   | Yes          | The policy to apply.     |
 
 **Example Request:**
-
 ```bash
-curl -X POST 'http://<host>:5006/kmip/kmip_register' \
-     -H "Content-Type: application/json" \
-     -d '{
-           "url": "https://example.com/object/1234",
-           "owner": "user1",
-           "policy": "default_policy"
-         }'
-```
-
-**Example Response:**
-
-```json
-{
-    "message": "KMIP object registered successfully",
-    "uid": 1235
-}
+curl -s -X POST "http://<host>:5006/kmip/kmip_register" \
+  -H "Authorization: Bearer $USER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"url":"https://example.com/v1/secrets/e71ad2be-8708-4dcb-893d-7cb1cf22d49e","owner":"user1","policy":"default_policy"}' | jq .
 ```
 
 ---
@@ -195,17 +183,9 @@ Retrieves the KMIP ID based on the provided Barbican ID.
 | `barbican_id`    | String   | Yes          | The unique Barbican ID.    |
 
 **Example Request:**
-
 ```bash
-curl -X GET 'http://<host>:5006/kmip/get_kmip_id_from_barbican?barbican_id=299'
-```
-
-**Example Response:**
-
-```json
-{
-    "kmip_id": "1234"
-}
+curl -s -X GET "http://<host>:5006/kmip/get_kmip_id_from_barbican?barbican_id=e71ad2be-8708-4dcb-893d-7cb1cf22d49e" \
+  -H "Authorization: Bearer $USER_TOKEN" | jq .
 ```
 
 ---
@@ -220,31 +200,42 @@ Updates the policy for a given KMIP object.
 
 **Request Body:**
 
-| **Field**              | **Type** | **Required** | **Description**            |
-|------------------------|----------|--------------|----------------------------|
-| `kmip_id`              | String   | Yes          | The unique KMIP ID.        |
-| `operation_policy_name` | String   | Yes          | The policy to be updated.  |
+| **Field**                | **Type** | **Required** | **Description**            |
+|--------------------------|----------|--------------|----------------------------|
+| `kmip_id`                | String   | Yes          | The unique KMIP ID.        |
+| `operation_policy_name`  | String   | Yes          | The policy to be updated.  |
 
 **Example Request:**
-
 ```bash
-curl -X POST 'http://<host>:5006/kmip/update_policy' \
-     -H "Content-Type: application/json" \
-     -d '{"kmip_id": "298", "operation_policy_name": "default"}'
-```
-
-**Example Response:**
-
-```json
-{
-    "message": "Operation policy updated successfully"
-}
+curl -s -X POST "http://<host>:5006/kmip/update_policy" \
+  -H "Authorization: Bearer $USER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"kmip_id":"298","operation_policy_name":"default"}' | jq .
 ```
 
 ---
 
-## 🧪 **Testing the APIs**
+### 🔧 **7. POST /kmip/update_owner**
 
-You can use tools like **Postman** or **cURL** to test the APIs. Ensure your database is correctly configured and the server is running.
+**Description:**
+Updates the owner for a given KMIP object.
+
+**Endpoint:**
+`POST /kmip/update_owner`
+
+**Request Body:**
+
+| **Field**     | **Type** | **Required** | **Description**      |
+|---------------|----------|--------------|----------------------|
+| `kmip_id`     | String   | Yes          | The unique KMIP ID.  |
+| `new_owner`   | String   | Yes          | The new owner.       |
+
+**Example Request:**
+```bash
+curl -s -X POST "http://<host>:5006/kmip/update_owner" \
+  -H "Authorization: Bearer $USER_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"kmip_id":"298","new_owner":"user2"}' | jq .
+```
 
 ---
