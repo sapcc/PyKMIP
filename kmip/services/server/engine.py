@@ -139,6 +139,7 @@ class KmipEngine(object):
         self.os_project_name = os.environ.get("OS_PROJECT_NAME")
         self.os_project_domain_name = os.environ.get("OS_PROJECT_DOMAIN_NAME")
         self.barbican = barbican.Barbicanstore(self.os_project_name, self.os_project_domain_name)
+        self.netapp_metadata = {}
 
     def _get_enum_string(self, e):
         return ''.join([x.capitalize() for x in e.name.split('_')])
@@ -568,7 +569,17 @@ class KmipEngine(object):
         for attribute in template_attribute.attributes:
             name = attribute.attribute_name.value
 
+            if name.startswith('x-NETAPP'):
+                if name == 'x-NETAPP-ClusterId':
+                    self.netapp_metadata[name] = attribute.attribute_value.value
+                else:
+                    self._logger.info(f"SAPCC: ignored attribute {name}"
+                        f"({attribute.attribute_value})")
+                    continue
+                    
+
             if not self._attribute_policy.is_attribute_supported(name):
+                self._logger.debug("SAPCC: 1")
                 raise exceptions.InvalidField(
                     "The {0} attribute is unsupported.".format(name)
                 )
@@ -889,6 +900,9 @@ class KmipEngine(object):
                         raise exceptions.InvalidField(
                             "Cannot set duplicate name values."
                         )
+            elif attribute_name == "x-NETAPP-ClusterId":
+                for value in attribute_value:
+                    managed_object.x_netapp_cluster_id = value.value
             elif attribute_name == "Application Specific Information":
                 for value in attribute_value:
                     managed_object.app_specific_info.append(
@@ -905,6 +919,7 @@ class KmipEngine(object):
                         objects.ObjectGroup(object_group=value.value)
                     )
             else:
+                self._logger.debug("SAPCC: 2")
                 # TODO (peterhamilton) Remove when all attributes are supported
                 raise exceptions.InvalidField(
                     "The {0} attribute is unsupported.".format(attribute_name)
@@ -940,6 +955,7 @@ class KmipEngine(object):
                 else:
                     setattr(managed_object, field, value)
             else:
+                self._logger.debug("SAPCC: 3")
                 # TODO (peterhamilton) Remove when all attributes are supported
                 raise exceptions.InvalidField(
                     "The {0} attribute is unsupported.".format(attribute_name)
@@ -2009,6 +2025,16 @@ class KmipEngine(object):
         managed_object._owner = self._client_identity[0]
         managed_object.initial_date = int(time.time())
 
+        name = "KMIP_REGISTERED"
+        algorithm = managed_object.cryptographic_algorithm
+        length = managed_object.cryptographic_length
+        bburl = self.barbican.create_secret(str(name),
+                                            managed_object.value,
+                                            str(algorithm), length)
+        _ = self.barbican.create_secret_metadata(bburl, self.netapp_metadata)
+        managed_object.value = bburl.encode('utf-8')
+        managed_object.names = []
+        
         self._data_session.add(managed_object)
 
         # NOTE (peterhamilton) SQLAlchemy will *not* assign an ID until
@@ -2026,7 +2052,11 @@ class KmipEngine(object):
             unique_identifier=str(managed_object.unique_identifier)
         )
 
+        self._logger.debug(f'SAPCC: response_payload.unique_identifier - {response_payload.unique_identifier}')
+
         self._id_placeholder = str(managed_object.unique_identifier)
+
+        self._logger.debug(f'SAPCC: _id_placeholder - {self._id_placeholder}')
 
         return response_payload
 
@@ -2705,11 +2735,14 @@ class KmipEngine(object):
     def _process_activate(self, payload):
         self._logger.info("Processing operation: Activate")
 
-        if payload.unique_identifier:
+        if payload.unique_identifier and payload.unique_identifier.value:
+            self._logger.debug(f'SAPCC: Inside if')
             unique_identifier = payload.unique_identifier.value
         else:
+            self._logger.debug(f'SAPCC: Inside else')
             unique_identifier = self._id_placeholder
 
+        self._logger.debug(f'SAPCC: unique_identifier - {unique_identifier}')
         managed_object = self._get_object_with_access_controls(
             unique_identifier,
             enums.Operation.ACTIVATE

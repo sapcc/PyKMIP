@@ -116,6 +116,8 @@ class Barbicanstore:
         self.project_name = project_name
         self.os_client = OpenstackHelper(self.region, self.user_domain_name, self.project_domain_name, self.project_name)
         self.api = self.os_client.api.key_manager
+
+        self.logger = logging.getLogger('kmip.server.engine')
     
     def create_secret(self, name, payload, algorithm=None, length=None):
         keymgr = self.api
@@ -128,8 +130,22 @@ class Barbicanstore:
             attrs['algorithm'] = algorithm
         if length:
             attrs['bit_length'] = length
-        secret_ref = keymgr.create_secret(**attrs)
+        secret_ref = keymgr.create_secret(**attrs)   
+            
         return secret_ref.secret_ref
+    
+    #SECTION - Store metadata in barbican
+    def create_secret_metadata(self, secret_ref, metadata):
+        secret_id = secret_ref.rstrip('/').split('/')[-1]
+        barbican_endpoint = self.os_client.api.endpoint_for(service_type='key-manager')
+        url = f"{barbican_endpoint}/v1/secrets/{secret_id}/metadata"
+
+        metadata_payload = {"metadata": metadata}
+        _ = self.os_client.api.session.put(url, json=metadata_payload)
+
+        self.logger.debug(f'SAPCC: Metadata Created')
+
+        return
 
     def retrive_secret(self, url):
         try:

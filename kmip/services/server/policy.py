@@ -131,6 +131,24 @@ class AttributePolicy(object):
 
         # TODO (peterhamilton) Alphabetize these
         self._attribute_rule_sets = {
+            'x-NETAPP-ClusterId': AttributeRuleSet(
+                False,                         # Required? False
+                ('client',),                   # Who can supply it? client
+                True,                          # Readable
+                True,                          # Writable
+                True,                          # Can be used during Create
+                True,                          # Can be used during Register
+                (
+                    enums.Operation.CREATE,
+                    enums.Operation.REGISTER,
+                ),                             # Allowed operations
+                (
+                    enums.ObjectType.SECRET_DATA,
+                    enums.ObjectType.OPAQUE_DATA,
+                    enums.ObjectType.SYMMETRIC_KEY
+                ),                             # Allowed object types
+                contents.ProtocolVersion(1, 4) # Minimum protocol version (1.4)
+            ),
             'Unique Identifier': AttributeRuleSet(
                 True,
                 ('server', ),
