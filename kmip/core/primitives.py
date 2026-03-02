@@ -36,6 +36,7 @@ class Base(object):
         self.tag = tag
         self.type = type
         self.length = None
+        self.logger = logging.getLogger('kmip.core.primitives')
 
     # TODO (peter-hamilton) Convert this into a classmethod, class name can be
     #                       obtained from cls parameter that replaces self
@@ -47,7 +48,11 @@ class Base(object):
     def read_tag(self, istream):
         # Read in the bytes for the tag
         tts = istream.read(self.TAG_SIZE)
-        tag = unpack('!I', b'\x00' + tts[0:self.TAG_SIZE])[0]
+        try:
+            tag = unpack('!I', b'\x00' + tts[0:self.TAG_SIZE])[0]
+        except Exception:
+            self.logger.error("Error reading tag value from buffer")
+            return
 
         enum_tag = enums.Tags(tag)
 
@@ -102,9 +107,12 @@ class Base(object):
         raise NotImplementedError()
 
     def read(self, istream, kmip_version=enums.KMIPVersion.KMIP_1_0):
-        self.read_tag(istream)
-        self.read_type(istream)
-        self.read_length(istream)
+        try:
+            self.read_tag(istream)
+            self.read_type(istream)
+            self.read_length(istream)
+        except Exception as e:
+            self.logger.warning(f"Skipping malformed field during read: {str(e)}")
 
     def write_tag(self, ostream):
         # Write the tag to the output stream
