@@ -78,9 +78,10 @@ class OpenstackHelper:
         auth = dict(
             auth_url='https://identity-3.{}.cloud.sap/v3'.format(self.region),
             username=os.environ.get("OS_USERNAME"),
+            password=os.environ.get("OS_PASSWORD"),
             user_domain_name=self.user_domain_name,
-            application_credential_name=os.environ.get('OS_APPLICATION_CREDENTIAL_NAME'),
-            application_credential_secret=os.environ.get('OS_APPLICATION_CREDENTIAL_SECRET'),
+            project_name=self.project_name,
+            project_domain_name=self.project_domain_name,
         )
         kwargs = {}
         if os.environ.get('OS_CERT'):
