@@ -1,0 +1,24 @@
+name: restapi-tests
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'pykmip-restapi/**'
+  pull_request:
+    paths:
+      - 'pykmip-restapi/**'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.9'
+      - name: Install dependencies
+        run: pip install -r pykmip-restapi/requirements.txt pytest
+      - name: Run tests
+        run: pytest tests/ -v
+        working-directory: pykmip-restapi

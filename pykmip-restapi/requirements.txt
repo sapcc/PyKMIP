@@ -1,6 +1,9 @@
 Flask==2.3.2
+Werkzeug>=2.3.3,<3.0
 PyKMIP==0.10.0
 gunicorn==22.0.0
 cryptography==43.0.1
 pymysql==1.1.1
 mysql-connector-python==9.1.0
+sentry-sdk[flask]==2.19.2
+prometheus-flask-exporter==0.23.1
