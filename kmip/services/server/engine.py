@@ -138,7 +138,8 @@ class KmipEngine(object):
         self._client_identity = [None, None]
         self.os_project_name = os.environ.get("OS_PROJECT_NAME")
         self.os_project_domain_name = os.environ.get("OS_PROJECT_DOMAIN_NAME")
-        self.barbican = barbican.Barbicanstore(self.os_project_name, self.os_project_domain_name)
+        self.barbican = barbican.Barbicanstore(
+            self.os_project_name, self.os_project_domain_name)
 
     def _get_enum_string(self, e):
         return ''.join([x.capitalize() for x in e.name.split('_')])
@@ -1396,8 +1397,6 @@ class KmipEngine(object):
             length
         )
 
-        
-
         managed_object = objects.SymmetricKey(
             algorithm,
             length,
@@ -1418,8 +1417,6 @@ class KmipEngine(object):
         # TODO (peterhamilton) Set additional server-only attributes.
         managed_object._owner = self._client_identity[0]
         managed_object.initial_date = int(time.time())
-
-        
         self._data_session.add(managed_object)
 
         # NOTE (peterhamilton) SQLAlchemy will *not* assign an ID until
