@@ -84,6 +84,7 @@ class BarbicanRoutes:
         project_id = data.get('project_id')
         if not secret_id or not project_id:
             return jsonify({"error": "Missing parameters"}), 400
-        logger.info("update_project_id called with secret_id=%s project_id=%s", secret_id, project_id)
+        logger.info("update_project_id called for project_id=%s", project_id)
+        logger.debug("update_project_id secret_id=%s", secret_id)
         result = self.barbican_service.update_project_id(secret_id, project_id)
         return jsonify(result)
