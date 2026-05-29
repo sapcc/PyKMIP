@@ -61,7 +61,7 @@ setuptools.setup(
         "python-openstackclient",
         "requests",
         "six",
-        "sqlalchemy"
+        "sqlalchemy>=1.0,<2.1"
     ],
     classifiers=[
         "Intended Audience :: Developers",

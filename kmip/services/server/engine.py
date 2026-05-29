@@ -138,7 +138,19 @@ class KmipEngine(object):
         self._client_identity = [None, None]
         self.os_project_name = os.environ.get("OS_PROJECT_NAME")
         self.os_project_domain_name = os.environ.get("OS_PROJECT_DOMAIN_NAME")
-        self.barbican = barbican.Barbicanstore(self.os_project_name, self.os_project_domain_name)
+        self.barbican = barbican.Barbicanstore(
+            self.os_project_name, self.os_project_domain_name)
+
+        if os.environ.get("OS_REGION_NAME"):
+            self._logger.info(
+                "Barbican backend enabled: region=%s project=%s",
+                os.environ.get("OS_REGION_NAME"),
+                self.os_project_name,
+            )
+        else:
+            self._logger.info(
+                "Barbican backend disabled: keys stored locally in database"
+            )
 
     def _get_enum_string(self, e):
         return ''.join([x.capitalize() for x in e.name.split('_')])
@@ -1245,9 +1257,24 @@ class KmipEngine(object):
         ).one()
         if operation == enums.Operation.GET:
             managed_object = copy.deepcopy(stored_object)
-            if managed_object.object_type == enums.ObjectType.SYMMETRIC_KEY:
+            if (os.environ.get("OS_REGION_NAME")
+                    and managed_object.object_type
+                    == enums.ObjectType.SYMMETRIC_KEY):
                 url = stored_object.value
-                managed_object.value = self.barbican.retrive_secret(url)
+                self._logger.debug(
+                    "Retrieving symmetric key from Barbican: uid=%s", uid,
+                )
+                try:
+                    managed_object.value = self.barbican.retrive_secret(url)
+                    self._logger.info(
+                        "Symmetric key retrieved from Barbican: uid=%s", uid
+                    )
+                except Exception as e:
+                    self._logger.error(
+                        "Failed to retrieve symmetric key from Barbican:"
+                        " uid=%s error=%s", uid, e
+                    )
+                    raise
         else:
             managed_object = stored_object
 
@@ -1396,18 +1423,33 @@ class KmipEngine(object):
             length
         )
 
-        
-
         managed_object = objects.SymmetricKey(
             algorithm,
             length,
             result.get('value')
         )
-        name = "KMIP"
-        bburl = self.barbican.create_secret(str(name),
-                                            managed_object.value,
-                                            str(algorithm), length)
-        managed_object.value = bburl.encode('utf-8')
+        if os.environ.get("OS_REGION_NAME"):
+            secret_name = object_attributes.get('Name', 'KMIP')
+            if hasattr(secret_name, 'value'):
+                secret_name = secret_name.value
+            self._logger.debug(
+                "Storing symmetric key in Barbican: name=%s algorithm=%s"
+                " length=%s",
+                secret_name, algorithm, length,
+            )
+            try:
+                bburl = self.barbican.create_secret(
+                    str(secret_name), managed_object.value,
+                    str(algorithm), length)
+                managed_object.value = bburl.encode('utf-8')
+                self._logger.info(
+                    "Symmetric key stored in Barbican successfully"
+                )
+            except Exception as e:
+                self._logger.error(
+                    "Failed to store symmetric key in Barbican: %s", e
+                )
+                raise
         managed_object.names = []
 
         self._set_attributes_on_managed_object(
@@ -1418,8 +1460,6 @@ class KmipEngine(object):
         # TODO (peterhamilton) Set additional server-only attributes.
         managed_object._owner = self._client_identity[0]
         managed_object.initial_date = int(time.time())
-
-        
         self._data_session.add(managed_object)
 
         # NOTE (peterhamilton) SQLAlchemy will *not* assign an ID until
