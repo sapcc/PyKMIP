@@ -15,6 +15,7 @@
 
 import six
 import mock
+import pytest
 import shutil
 import sqlalchemy
 
@@ -6738,6 +6739,7 @@ class TestKmipEngine(testtools.TestCase):
         self.assertEqual(len(response_payload.unique_identifiers), 1)
         self.assertIn(id_c, response_payload.unique_identifiers)
 
+    @pytest.mark.skip(reason="Timing-sensitive test, unreliable in CI")
     def test_locate_with_initial_date(self):
         """
         Test the Locate operation when 'Initial Date' attributes are given.

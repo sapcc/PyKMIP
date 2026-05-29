@@ -122,7 +122,7 @@ class Barbicanstore:
         keymgr = self.api
         attrs = dict()
         attrs["name"] = name
-        attrs["secret_type"] = "symmetric"
+        attrs["secret_type"] = "symmetric"  # nosec B105
         attrs["payload_content_type"] = "text/plain"
         attrs["payload"] = base64.b64encode(payload).decode('utf-8')
         if algorithm:
