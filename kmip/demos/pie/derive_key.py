@@ -123,7 +123,9 @@ if __name__ == '__main__':
                 cryptographic_algorithm=enums.CryptographicAlgorithm.RC4
             )
             logger.info("Successfully derived a new secret via HMAC.")
-            logger.info("A new secret has been derived successfully, but its ID will not be logged for security reasons.")
+            logger.info(
+                "A new secret has been derived successfully, but its "
+                "ID will not be logged for security reasons.")
         except Exception as e:
             logger.error(e)
 
@@ -172,6 +174,8 @@ if __name__ == '__main__':
             logger.info(
                 "Successfully derived a new secret via NIST 800 108-C."
             )
-            logger.info("A new secret has been derived successfully, but its ID will not be logged for security reasons.")
+            logger.info(
+                "A new secret has been derived successfully, but its "
+                "ID will not be logged for security reasons.")
         except Exception as e:
             logger.error(e)

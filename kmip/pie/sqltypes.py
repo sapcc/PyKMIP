@@ -26,7 +26,7 @@ Base = declarative_base()
 
 def attribute_append_factory(index_attribute):
     def attribute_append(list_container, list_attribute, initiator):
-        index = getattr(list_container, index_attribute)
+        index = getattr(list_container, index_attribute) or 0
         list_attribute.index = index
         setattr(list_container, index_attribute, index + 1)
         return list_attribute

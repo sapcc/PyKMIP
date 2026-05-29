@@ -144,7 +144,8 @@ class TestKmipEngine(testtools.TestCase):
         args = ("sqlite:////tmp/pykmip.database",)
         fargs = {
             'echo': False,
-            'connect_args': {'check_same_thread': False}
+            'pool_pre_ping': True,
+            'connect_args': {}
         }
         create_engine_mock.assert_called_once_with(*args, **fargs)
 
@@ -12552,3 +12553,207 @@ class TestKmipEngine(testtools.TestCase):
             e._process_sign,
             *args
         )
+
+    # ------------------------------------------------------------------
+    # Barbican integration: _process_create with OS_REGION_NAME set
+    # ------------------------------------------------------------------
+
+    def test_create_stores_barbican_url_when_region_set(self):
+        """When OS_REGION_NAME is set, _process_create should store the
+        Barbican secret URL as the key value instead of the raw key bytes."""
+        e = engine.KmipEngine()
+        e._data_store = self.engine
+        e._data_store_session_factory = self.session_factory
+        e._data_session = e._data_store_session_factory()
+        e._logger = mock.MagicMock()
+
+        attribute_factory = factory.AttributeFactory()
+        object_type = enums.ObjectType.SYMMETRIC_KEY
+        template_attribute = objects.TemplateAttribute(
+            attributes=[
+                attribute_factory.create_attribute(
+                    enums.AttributeType.NAME,
+                    attributes.Name.create(
+                        'Test Key',
+                        enums.NameType.UNINTERPRETED_TEXT_STRING
+                    )
+                ),
+                attribute_factory.create_attribute(
+                    enums.AttributeType.CRYPTOGRAPHIC_ALGORITHM,
+                    enums.CryptographicAlgorithm.AES
+                ),
+                attribute_factory.create_attribute(
+                    enums.AttributeType.CRYPTOGRAPHIC_LENGTH,
+                    256
+                ),
+                attribute_factory.create_attribute(
+                    enums.AttributeType.CRYPTOGRAPHIC_USAGE_MASK,
+                    [enums.CryptographicUsageMask.ENCRYPT]
+                ),
+            ]
+        )
+        payload = payloads.CreateRequestPayload(object_type, template_attribute)
+
+        fake_url = 'https://barbican/v1/secrets/deadbeef'
+        mock_barbican = mock.MagicMock()
+        mock_barbican.create_secret.return_value = fake_url
+        e.barbican = mock_barbican
+
+        with mock.patch.dict('os.environ', {'OS_REGION_NAME': 'eu-de-1'}):
+            response_payload = e._process_create(payload)
+            e._data_session.commit()
+            e._data_session = e._data_store_session_factory()
+
+        uid = response_payload.unique_identifier
+        stored = e._data_session.query(pie_objects.SymmetricKey).filter(
+            pie_objects.ManagedObject.unique_identifier == uid
+        ).one()
+
+        self.assertEqual(fake_url.encode('utf-8'), stored.value)
+        mock_barbican.create_secret.assert_called_once()
+
+    def test_create_skips_barbican_when_region_not_set(self):
+        """When OS_REGION_NAME is absent, raw key bytes are stored directly."""
+        e = engine.KmipEngine()
+        e._data_store = self.engine
+        e._data_store_session_factory = self.session_factory
+        e._data_session = e._data_store_session_factory()
+        e._logger = mock.MagicMock()
+
+        attribute_factory = factory.AttributeFactory()
+        object_type = enums.ObjectType.SYMMETRIC_KEY
+        template_attribute = objects.TemplateAttribute(
+            attributes=[
+                attribute_factory.create_attribute(
+                    enums.AttributeType.CRYPTOGRAPHIC_ALGORITHM,
+                    enums.CryptographicAlgorithm.AES
+                ),
+                attribute_factory.create_attribute(
+                    enums.AttributeType.CRYPTOGRAPHIC_LENGTH,
+                    128
+                ),
+                attribute_factory.create_attribute(
+                    enums.AttributeType.CRYPTOGRAPHIC_USAGE_MASK,
+                    [enums.CryptographicUsageMask.ENCRYPT]
+                ),
+            ]
+        )
+        payload = payloads.CreateRequestPayload(object_type, template_attribute)
+
+        mock_barbican = mock.MagicMock()
+        e.barbican = mock_barbican
+
+        env = {k: v for k, v in __import__('os').environ.items()
+               if k != 'OS_REGION_NAME'}
+        with mock.patch.dict('os.environ', env, clear=True):
+            response_payload = e._process_create(payload)
+            e._data_session.commit()
+            e._data_session = e._data_store_session_factory()
+
+        uid = response_payload.unique_identifier
+        stored = e._data_session.query(pie_objects.SymmetricKey).filter(
+            pie_objects.ManagedObject.unique_identifier == uid
+        ).one()
+
+        mock_barbican.create_secret.assert_not_called()
+        self.assertEqual(16, len(stored.value))  # raw 128-bit key bytes
+
+    # ------------------------------------------------------------------
+    # Barbican integration: _process_get with OS_REGION_NAME set
+    # ------------------------------------------------------------------
+
+    def test_get_resolves_barbican_url_for_symmetric_key(self):
+        """GET on a SymmetricKey whose value is a Barbican URL should call
+        retrive_secret and return the decoded bytes in the response."""
+        e = engine.KmipEngine()
+        e._data_store = self.engine
+        e._data_store_session_factory = self.session_factory
+        e._data_session = e._data_store_session_factory()
+        e._is_allowed_by_operation_policy = mock.Mock(return_value=True)
+        e._logger = mock.MagicMock()
+
+        fake_url = b'https://barbican/v1/secrets/deadbeef'
+        raw_key = b'\xab' * 16
+
+        # Create object with valid raw bytes first, then overwrite the stored
+        # value with the URL (matching what _process_create does in production).
+        obj = pie_objects.SymmetricKey(
+            enums.CryptographicAlgorithm.AES,
+            128,
+            raw_key,
+        )
+        e._data_session.add(obj)
+        e._data_session.commit()
+
+        obj.value = fake_url
+        e._data_session.commit()
+        e._data_session = e._data_store_session_factory()
+
+        uid = str(obj.unique_identifier)
+        payload = payloads.GetRequestPayload(unique_identifier=uid)
+
+        mock_barbican = mock.MagicMock()
+        mock_barbican.retrive_secret.return_value = raw_key
+        e.barbican = mock_barbican
+
+        with mock.patch.dict('os.environ', {'OS_REGION_NAME': 'eu-de-1'}):
+            e._process_get(payload)
+
+        mock_barbican.retrive_secret.assert_called_once_with(fake_url)
+
+    def test_get_skips_barbican_for_symmetric_key_when_region_not_set(self):
+        """Without OS_REGION_NAME the stored value is returned as-is."""
+        e = engine.KmipEngine()
+        e._data_store = self.engine
+        e._data_store_session_factory = self.session_factory
+        e._data_session = e._data_store_session_factory()
+        e._is_allowed_by_operation_policy = mock.Mock(return_value=True)
+        e._logger = mock.MagicMock()
+
+        raw_key = b'\xcd' * 16
+        obj = pie_objects.SymmetricKey(
+            enums.CryptographicAlgorithm.AES,
+            128,
+            raw_key,
+        )
+        e._data_session.add(obj)
+        e._data_session.commit()
+        e._data_session = e._data_store_session_factory()
+
+        uid = str(obj.unique_identifier)
+        payload = payloads.GetRequestPayload(unique_identifier=uid)
+
+        mock_barbican = mock.MagicMock()
+        e.barbican = mock_barbican
+
+        env = {k: v for k, v in __import__('os').environ.items()
+               if k != 'OS_REGION_NAME'}
+        with mock.patch.dict('os.environ', env, clear=True):
+            e._process_get(payload)
+
+        mock_barbican.retrive_secret.assert_not_called()
+
+    def test_get_skips_barbican_for_non_symmetric_key(self):
+        """OS_REGION_NAME set but object is not a SymmetricKey: no barbican call."""
+        e = engine.KmipEngine()
+        e._data_store = self.engine
+        e._data_store_session_factory = self.session_factory
+        e._data_session = e._data_store_session_factory()
+        e._is_allowed_by_operation_policy = mock.Mock(return_value=True)
+        e._logger = mock.MagicMock()
+
+        obj = pie_objects.OpaqueObject(b'\x01\x02', enums.OpaqueDataType.NONE)
+        e._data_session.add(obj)
+        e._data_session.commit()
+        e._data_session = e._data_store_session_factory()
+
+        uid = str(obj.unique_identifier)
+        payload = payloads.GetRequestPayload(unique_identifier=uid)
+
+        mock_barbican = mock.MagicMock()
+        e.barbican = mock_barbican
+
+        with mock.patch.dict('os.environ', {'OS_REGION_NAME': 'eu-de-1'}):
+            e._process_get(payload)
+
+        mock_barbican.retrive_secret.assert_not_called()
