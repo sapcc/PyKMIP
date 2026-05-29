@@ -193,6 +193,7 @@ class TestKmipServer(testtools.TestCase):
         manager_mock.return_value = manager_instance_mock
 
         a_mock = mock.MagicMock()
+        health_mock = mock.MagicMock()
         b_mock = mock.MagicMock()
 
         s = server.KmipServer(
@@ -211,7 +212,8 @@ class TestKmipServer(testtools.TestCase):
         # log messages are.
         with mock.patch('socket.socket') as socket_mock:
             with mock.patch('ssl.wrap_socket') as ssl_mock:
-                socket_mock.return_value = a_mock
+                # First call: TLS socket; second call: health check socket.
+                socket_mock.side_effect = [a_mock, health_mock]
                 ssl_mock.return_value = b_mock
 
                 manager_mock.assert_not_called()
@@ -236,7 +238,8 @@ class TestKmipServer(testtools.TestCase):
                 )
                 s._logger.debug.assert_any_call("AES128-SHA")
 
-                socket_mock.assert_called_once_with(
+                self.assertEqual(2, socket_mock.call_count)
+                socket_mock.assert_any_call(
                     socket.AF_INET,
                     socket.SOCK_STREAM
                 )
@@ -247,7 +250,7 @@ class TestKmipServer(testtools.TestCase):
                 )
                 self.assertTrue(ssl_mock.called)
                 b_mock.bind.assert_called_once_with(('127.0.0.1', 5696))
-                s._logger.info.assert_called_with(
+                s._logger.info.assert_any_call(
                     "Server successfully bound socket handler to "
                     "127.0.0.1:5696"
                 )

@@ -400,7 +400,7 @@ class KmipServer(object):
                 conn.close()
             except socket.timeout:
                 pass
-            except Exception:
+            except Exception:  # nosec B110 - health socket; all errors are non-fatal
                 pass
 
     def serve(self):
