@@ -9,4 +9,4 @@ python-openstackclient
 requests
 flask
 six>=1.11.0
-sqlalchemy>=1.0
+sqlalchemy>=1.0,<2.1

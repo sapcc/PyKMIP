@@ -324,6 +324,18 @@ class KmipServer(object):
             )
             self._is_serving = True
 
+        # Start a plain TCP health check listener on port 5697.
+        # The kubelet probe connects here instead of the TLS port, avoiding
+        # SSLZeroReturnError spam from probes that don't do TLS handshakes.
+        self._health_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self._health_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        self._health_socket.bind((self.config.settings.get('hostname'), 5697))
+        self._health_socket.listen(5)
+        self._health_socket.settimeout(1)
+        health_thread = threading.Thread(target=self._serve_health, daemon=True)
+        health_thread.start()
+        self._logger.info("Health check listener started on port 5697.")
+
     def stop(self):
         """
         Stop the server.
@@ -379,6 +391,17 @@ class KmipServer(object):
                 raise exceptions.ShutdownError(
                     "Server failed to clean up the policy monitor."
                 )
+
+    def _serve_health(self):
+        """Accept and immediately close plain TCP connections for health checks."""
+        while self._is_serving:
+            try:
+                conn, _ = self._health_socket.accept()
+                conn.close()
+            except socket.timeout:
+                pass
+            except Exception:  # nosec B110 - health socket; all errors are non-fatal
+                pass
 
     def serve(self):
         """
