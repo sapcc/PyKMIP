@@ -2,7 +2,7 @@ Flask==3.0.3
 Werkzeug>=3.0.3,<4.0
 PyKMIP==0.10.0
 gunicorn==23.0.0
-cryptography==43.0.1
+cryptography==46.0.7
 pymysql==1.1.1
 mysql-connector-python==9.1.0
 prometheus-flask-exporter==0.23.1
