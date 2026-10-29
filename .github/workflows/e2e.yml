@@ -1,4 +1,23 @@
 name: e2e-tests
+#
+# Runs all 8 pykmip-restapi endpoints end-to-end using curl (e2e_test.sh).
+#
+# The service is internal to the SAP CC cluster; public GitHub Actions runners
+# cannot reach it.  The job skips gracefully when the secrets are absent and
+# only blocks the build when they are present (self-hosted runner / VPN).
+#
+# Secrets to configure in repo Settings -> Secrets -> Actions:
+#   KMIP_E2E_URL    e.g. https://kmip.cc.qa-de-1.cloud.sap
+#   KMIP_E2E_TOKEN  Long-lived Keystone service token (keymanager_admin role)
+#
+# To run manually from inside the cluster at any time (no CI required):
+#   source ~/Downloads/openrc-monsoon3-cc-demo-qa-de-1-tm3
+#   TOKEN=$(openstack token issue -f value -c id)
+#   kubectl -n monsoon3 run e2e-$RANDOM --rm -i --restart=Never \
+#     --image=keppel.global.cloud.sap/ccloud-dockerhub-mirror/nicolaka/netshoot \
+#     --env="KMIP_API_URL=http://kmip-barbican:5005" \
+#     --env="KMIP_TOKEN=$TOKEN" \
+#     -- bash -s < pykmip-restapi/tests/e2e_test.sh
 
 on:
   push:
@@ -17,22 +36,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Install dependencies
-        run: pip install requests
-
       - name: Run e2e tests
         env:
           KMIP_API_URL: ${{ secrets.KMIP_E2E_URL }}
           KMIP_TOKEN: ${{ secrets.KMIP_E2E_TOKEN }}
-          KMIP_TEST_BARBICAN_ID: ${{ secrets.KMIP_E2E_BARBICAN_ID }}
-          KMIP_TEST_PROJECT_ID: ${{ secrets.KMIP_E2E_PROJECT_ID }}
         run: |
           if [ -z "$KMIP_TOKEN" ] || [ -z "$KMIP_API_URL" ]; then
             echo "Skipping e2e tests: KMIP_E2E_TOKEN / KMIP_E2E_URL secrets not configured"
+            echo "To run manually from inside the cluster, see the comments in e2e.yml or e2e_test.sh"
             exit 0
           fi
-          python pykmip-restapi/tests/e2e_test.py
+          bash pykmip-restapi/tests/e2e_test.sh
