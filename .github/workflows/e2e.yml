@@ -1,0 +1,38 @@
+name: e2e-tests
+
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'pykmip-restapi/**'
+      - '.github/workflows/e2e.yml'
+  pull_request:
+    paths:
+      - 'pykmip-restapi/**'
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests
+
+      - name: Run e2e tests
+        env:
+          KMIP_API_URL: ${{ secrets.KMIP_E2E_URL }}
+          KMIP_TOKEN: ${{ secrets.KMIP_E2E_TOKEN }}
+          KMIP_TEST_BARBICAN_ID: ${{ secrets.KMIP_E2E_BARBICAN_ID }}
+          KMIP_TEST_PROJECT_ID: ${{ secrets.KMIP_E2E_PROJECT_ID }}
+        run: |
+          if [ -z "$KMIP_TOKEN" ] || [ -z "$KMIP_API_URL" ]; then
+            echo "Skipping e2e tests: KMIP_E2E_TOKEN / KMIP_E2E_URL secrets not configured"
+            exit 0
+          fi
+          python pykmip-restapi/tests/e2e_test.py
