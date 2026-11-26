@@ -1,8 +1,12 @@
 # Barbican-KMIP REST API
 
+> **SCI-internal.** This is an SCI-internal fork of PyKMIP. The `pykmip-restapi` service documented here is an SCI addition and is not part of upstream PyKMIP.
+
 REST API for managing KMIP objects and Barbican secrets. All endpoints except `/healthz` require a Keystone token with the `keymanager_admin` role.
 
 ## Authentication
+
+This REST API is **server-side only**: it has no OpenStack identity of its own. Every request (except `/healthz`) must carry a Keystone token, which the service validates against Keystone (`GET /v3/auth/tokens`) and then checks for the `keymanager_admin` role. The required role is configurable via the `ALLOWED_ADMIN_ROLES` env var (comma-separated; default `keymanager_admin`).
 
 ```bash
 export TOKEN=$(openstack token issue -f value -c id)
@@ -12,6 +16,19 @@ Pass the token as a Bearer header on every request:
 ```
 Authorization: Bearer <token>
 ```
+
+The token's roles come from **your** user and the project you scope to: that project must grant you `keymanager_admin`, otherwise the request is rejected with `401` even though the token itself is valid.
+
+### How it works (two separate identities)
+
+It is easy to confuse this REST API with `kmip-core` (the PyKMIP protocol server). They authenticate in opposite directions:
+
+| Component | Direction | Identity | Source |
+|-----------|-----------|----------|--------|
+| `kmip-restapi` (this service) | **inbound** — validates the *caller* | none of its own | the caller's Bearer token, checked against Keystone for `keymanager_admin` |
+| `kmip-core` (PyKMIP server) | **outbound** — authenticates *as* a service user | `kmip-barbican` | OpenStack `OS_*` credentials from the `kmip-secrets` secret |
+
+The `kmip-barbican` service user is created by the OpenStack seeder in the `Default` domain, with the `service` and `keymanager_admin` roles on the `service` project. That service user belongs to `kmip-core` only — this REST API never uses it; it just verifies whoever is calling.
 
 ## Base URL
 
