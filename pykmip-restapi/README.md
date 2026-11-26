@@ -1,5 +1,7 @@
 # Barbican-KMIP REST API
 
+> **SCI-internal.** This is an SCI-internal fork of PyKMIP. The `pykmip-restapi` service documented here is an SCI addition and is not part of upstream PyKMIP.
+
 REST API for managing KMIP objects and Barbican secrets. All endpoints except `/healthz` require a Keystone token with the `keymanager_admin` role.
 
 ## Authentication
