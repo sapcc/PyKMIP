@@ -9,7 +9,7 @@ jobs:
     tox-test:
         strategy:
             matrix:
-                os: [ubuntu-latest]
+                os: [ubuntu-24.04]
                 python:
                     - {version: '3.9', env: py39}
                 test_mode: [0, 1]
@@ -32,7 +32,7 @@ jobs:
     tox-other:
         strategy:
             matrix:
-                os: [ubuntu-latest]
+                os: [ubuntu-24.04]
                 python: ['3.9']
                 test: [pep8, bandit, docs]
         runs-on: ${{ matrix.os }}
