@@ -123,13 +123,19 @@ class BarbicanService:
             project = {key: value.decode('utf-8') if isinstance(value, bytearray) else value for key, value in project.items()}
             project_id = project['id']
 
+            # Verify the secret exists before updating. We check existence
+            # explicitly rather than relying on cursor.rowcount after the
+            # UPDATE: by default MySQL reports the number of rows *changed*,
+            # so a no-op update (secret already has this project_id) returns
+            # rowcount == 0 and would be misreported as "secret not found".
+            cursor.execute("SELECT 1 FROM secrets WHERE id=%s", (secret_id,))
+            if not cursor.fetchone():
+                return {"error": f"No secret found with the given secret_id: {secret_id}"}
+
             # Update the project_id in the secrets table
             update_query = "UPDATE secrets SET project_id=%s WHERE id=%s"
             logger.debug("Executing update query for secrets table with placeholders for sensitive data.")
             cursor.execute(update_query, (project_id, secret_id))
-
-            if cursor.rowcount == 0:
-                return {"error": f"No secret found with the given secret_id: {secret_id}"}
 
             # Commit the transaction
             self.connection.commit()
